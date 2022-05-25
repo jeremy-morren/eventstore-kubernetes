@@ -1,7 +1,7 @@
 ﻿
 Installed chart as {{ include "chart.fullname" . }}
 
-The rollout may have failed. Wait about 15 seconds, then run the following command:
+The rollout likely failed. Wait about a minute, then run the following command:
 kubectl rollout restart statefulset.apps {{ include "chart.fullname" . }}-cluster -n {{ .Release.Namespace }}
 
 2. Access certificates via the client-certs cli
