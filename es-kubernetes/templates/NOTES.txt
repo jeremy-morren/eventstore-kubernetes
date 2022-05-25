@@ -1,13 +1,7 @@
 ﻿
 Installed chart as {{ include "chart.fullname" . }}
 
-Created EventStore internal CA certificate
-
 The rollout may have failed. Wait about 15 seconds, then run the following command:
-kubectl rollout restart statefulset.apps {{ include "chart.fullname" . }}-cluster -n {{ .Release.Namespace }}
-
-1. A certificate.cert-manager.io has been created.  Wait for it to be ready and then restart the rollout
-kubectl get certificate.cert-manager.io {{ include "chart.fullname" . }}-certificate -n {{ .Release.Namespace }} --watch
 kubectl rollout restart statefulset.apps {{ include "chart.fullname" . }}-cluster -n {{ .Release.Namespace }}
 
 2. Access certificates via the client-certs cli
