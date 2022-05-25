@@ -9,9 +9,9 @@ helm repo add es-kubernetes https://jeremy-morren.github.io/es-kubernetes/
 helm install esdb es-kubernetes --namespace esdb --create-namespace -f values.yaml
 ```
 
-Before installing, you need an ingress controller which supports TLS passthrough.  A basic `values.yaml` should look as follows:
-
 > It may take a while to complete, due to the need to create an EventStore CA certificate. Please be patient.
+
+Before installing, you need an ingress controller which supports TLS passthrough.  A basic `values.yaml` should look as follows:
 
 ```yaml
 clusterSize: 3
