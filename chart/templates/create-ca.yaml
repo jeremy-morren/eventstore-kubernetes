@@ -1,0 +1,26 @@
+﻿apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "chart.fullname" . }}-create-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+  annotations:
+    "helm.sh/hook": post-install
+spec:
+  ttlSecondsAfterFinished: 10
+  backoffLimit: 4
+  template:
+    metadata:
+      labels:
+        {{- include "chart.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster
+    spec:
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      containers:
+        - name: pi
+          image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [ 'setup', 'create-ca', '--secret={{ include "chart.fullname" . }}-ca-certs', '--name={{ include "chart.fullname" . }}' ]
+      restartPolicy: Never

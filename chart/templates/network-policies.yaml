@@ -1,0 +1,54 @@
+﻿apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "chart.fullname" .}}-deny-gossip
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+#Only access to gossip ports from other pods
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "chart.labels" . | nindent 6 }}
+      app.kubernetes.io/component: cluster
+      app.kubernetes.io/cluster-node: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            {{- include "chart.labels" . | nindent 12 }}
+            app.kubernetes.io/component: cluster
+            app.kubernetes.io/cluster-node: "true"
+      ports:
+        - protocol: TCP
+          port: 2113
+        - protocol: TCP
+          port: 1113
+   
+---
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "chart.fullname" .}}-allow-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "chart.labels" . | nindent 6 }}
+      app.kubernetes.io/component: cluster
+      app.kubernetes.io/cluster-node: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+      - protocol: TCP
+        port: 80
+      - protocol: TCP
+        port: 443

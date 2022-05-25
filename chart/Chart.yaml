@@ -1,0 +1,6 @@
+﻿apiVersion: v2
+name: eventstore
+description:  A Helm chart to install a secure EventStore cluster
+type: application
+version: 0.1.0
+appVersion: "21.10.2"
