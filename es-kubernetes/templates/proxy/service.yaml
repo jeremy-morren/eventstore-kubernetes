@@ -6,12 +6,20 @@ metadata:
   labels:
     {{- include "esdb.labels" $ | nindent 4 }}
     app.kubernetes.io/component: proxy
+  {{- with .Values.proxy.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4}}
+  {{- end}}
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - name: http
       port: 80
       targetPort: http
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: https
       protocol: TCP
   selector:
     {{- include "esdb.labels" $ | nindent 4 }}

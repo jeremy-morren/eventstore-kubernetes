@@ -80,7 +80,10 @@ spec:
               
               #Scale (now that the secrets are available)
               kubectl scale statefulset.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-cluster' '--replicas={{.Values.eventstore.clusterSize }}'
+              kubectl rollout restart statefulset.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-cluster'
+              
               kubectl scale deployment.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-proxy' '--replicas={{.Values.proxy.replicas }}'
+              kubectl rollout restart deployment.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-proxy'
       restartPolicy: Never
       volumes:
         - name: certs

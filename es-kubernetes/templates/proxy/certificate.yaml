@@ -1,0 +1,25 @@
+﻿{{- if .Values.proxy.certificate.create }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "esdb.fullname" . }}-certificate
+  labels:
+    {{- include "esdb.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: proxy
+spec:
+  secretName: {{ include "helpers.tlssecret" .}}
+  dnsNames:
+    {{- range $k, $v := .Values.proxy.hosts }}
+    - {{ $v | squote }} #node-{{ $k }}
+    {{- end }}
+  issuerRef:
+    name: {{ .Values.proxy.certificate.issuer.name }}
+    kind: {{ .Values.proxy.certificate.issuer.kind }}
+    group: {{ .Values.proxy.certificate.issuer.group }}
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  
+{{- end }}

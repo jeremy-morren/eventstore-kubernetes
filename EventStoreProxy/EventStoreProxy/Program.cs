@@ -18,6 +18,9 @@ try
     
     builder.Configuration.AddEnvironmentVariables("PROXY_");
 
+    if (string.IsNullOrWhiteSpace(builder.Configuration["AcmeHost"]))
+        throw new InvalidOperationException("AcmeHost configuration not found");
+
     builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
 
     builder.Host.UseSerilog((context, conf) => conf
@@ -37,16 +40,8 @@ try
 
     builder.Services.AddControllers();
 
-    builder.Services.AddCors(options =>
-    {
-        var origins = nodes.Select(n => $"https://{n.PublicHost}/").ToArray();
-        options.AddDefaultPolicy(b => b
-            .WithOrigins(origins)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials());
-    });
-
+    builder.Services.AddCors();
+    
     builder.Services.AddHttpClient<BasicAuthenticationHandler>();
 
     builder.Services
@@ -63,11 +58,6 @@ try
     builder.Services.AddHealthChecks();
 
     var app = builder.Build();
-
-    app.UseForwardedHeaders(new ForwardedHeadersOptions()
-    {
-        ForwardedHeaders = ForwardedHeaders.XForwardedProto
-    });
     
     app.UseHttpsRedirection();
     
@@ -93,7 +83,14 @@ try
 
     app.MapHealthChecks("/healthz/live");
     
-    app.UseCors();
+    app.UseCors(b =>
+    {
+        var origins = nodes.Select(n => $"https://{n.PublicHost}/").ToArray();
+        b.WithOrigins(origins.ToArray())
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 
     app.UseAuthentication();
     app.UseAuthorization();

@@ -53,10 +53,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- end }}
 
-{{/* Create the list of hosts */}}
-{{- define "helpers.hosts" -}}
-items:
-{{- range $i, $e := until (.Values.clusterSize | int) }}
-    - '{{ index $.Values.proxy.hosts ($i | toString) }}'
-{{- end }}
-{{- end }}
+{{- define "helpers.tlssecret" }}
+{{- .Values.proxy.tlsSecretName | default (print (include "esdb.fullname" .) "-ingress-tls") }}
+{{- end}}

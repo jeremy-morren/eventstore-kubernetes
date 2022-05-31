@@ -22,12 +22,39 @@ proxy:
     
   #Number of replicas for the deployment
   replicas: 1
-  
-  #Configure the ingress resource
-  ingress:
-    class: ""
+    
+  service:
+    #Host to forward acme challenges to (will return a 307)
+    #Must be a fully qualified url
+    acmeHost: "http://ingress.example.com/"
     annotations: {}
-    tlsSecretName: ""
+  
+  tlsSecretName: ""
+  
+  #Configure the cert-manager.io/certificate resource
+  certificate:
+    create: true
+    issuer:
+      name: default
+      kind: ClusterIssuer
+      group: cert-manager.io
+  
+#  #Configure the ingress resource
+#  #The ingress controller must support tls passthrough
+#  ingress:
+#    tlsSecretName: ""
+#    
+#    class: ""
+#    annotations: {}
+#    
+#    #If class is nginx
+#    #annotations:
+#    #  nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+#    #  nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+#    #If class is haproxy
+#    #annotations:
+#    #  kubernetes.io/tls-passthrough: "true"
+    
   
   #Deployment annotations
   annotations: {}

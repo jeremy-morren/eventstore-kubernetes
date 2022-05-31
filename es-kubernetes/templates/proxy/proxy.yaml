@@ -47,18 +47,23 @@ spec:
             - name: PROXY_EventStore__{{$i}}__InternalHost
               value: {{ print (include "esdb.fullname" $) "-cluster-" $i ":2113" }}
             {{- end}}
+            - name: PROXY_AcmeHost
+              value: {{ .Values.proxy.service.acmeHost }}
           ports:
-            - containerPort: 80
+            - containerPort: 443
               protocol: TCP
-              name: http
+              name: https
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
             - mountPath: /certs/ca
               name: ca-certs
+            - mountPath: /certs/public
+              name: public-certs
           livenessProbe:
             httpGet:
-              port: http
+              port: https
               path: /healthz/live
+              scheme: HTTPS
               
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -73,11 +78,16 @@ spec:
       volumes:
         - name: ca-certs
           secret:
-            secretName: {{ include "esdb.fullname" $}}-certs
+            secretName: {{ include "esdb.fullname" .}}-certs
             defaultMode: 0440
             items:
               - key: ca.crt
                 path: ca.crt
+        - name: public-certs
+          secret:
+            secretName: {{ include "helpers.tlssecret" .}}
+            optional: true
+            defaultMode: 0440
         
           
           
