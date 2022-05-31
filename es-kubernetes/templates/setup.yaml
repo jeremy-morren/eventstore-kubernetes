@@ -1,0 +1,87 @@
+﻿apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "esdb.fullname" . }}-certs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+#Keys wil be added below
+---
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "esdb.fullname" . }}-create-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+  annotations:
+    "helm.sh/hook": post-install
+spec:
+  ttlSecondsAfterFinished: 10
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        {{- include "esdb.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster
+    spec:
+      serviceAccountName: {{ include "esdb.serviceAccountName" . }}
+      initContainers:
+        - name: create-certs
+          image: {{.Values.cliImages.genCerts.repository}}:{{.Values.cliImages.genCerts.tag}}
+          imagePullPolicy: {{.Values.cliImages.genCerts.pullPolicy}}
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+          command:
+            - /bin/sh
+            - '-c'
+            - |
+              es-gencert-cli create-ca -days '{{.Values.certificatesLength.ca }}' -out /certs/ca
+              chmod 444 /certs/ca/*
+              {{range $i, $e := until (.Values.eventstore.clusterSize | int) }}
+              es-gencert-cli create-node -days '{{ $.Values.certificatesLength.node}}' \
+                -ca-certificate /certs/ca/ca.crt -ca-key /certs/ca/ca.key \
+                -dns-names 'localhost,{{ include "esdb.fullname" $ }}-cluster-{{$i}}' \
+                -out /certs/{{$i}}
+              chmod 444 /certs/{{$i}}/*
+              {{end}}
+      containers:
+        - name: deploy
+          image: {{.Values.cliImages.kubectl.repository}}:{{.Values.cliImages.kubectl.tag}}
+          imagePullPolicy: {{.Values.cliImages.kubectl.pullPolicy}}
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+          command:
+            - /bin/bash
+            - '-c'
+            - |
+              #Args are $1=key $2=filename
+              values='{}'
+              patch() {
+                #Append key/value to values
+                values=$(jq -c --arg k "$1" --arg v "$(base64 -w 0 $2)" '. += { ($k): $v }' <<<"$values")
+              }
+              patch ca.crt /certs/ca/ca.crt
+              patch ca.key /certs/ca/ca.key
+              {{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
+              patch node-{{$i}}.crt /certs/{{$i}}/node.crt
+              patch node-{{$i}}.key /certs/{{$i}}/node.key
+              {{- end}}
+              json=$(jq --argjson v "$values" '.[0] |= { "op": "replace", "path": "/data", "value": $v }'<<<'[]')
+              kubectl patch secret -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-certs' --type=json "-p=$json"
+              #Mark the secret as immutable
+              kubectl patch secret -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-certs' --type=json \
+                '-p=[ { "op": "replace", "path": "/immutable", "value": true } ]'
+              
+              #Scale (now that the secrets are available)
+              kubectl scale statefulset.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-cluster' '--replicas={{.Values.eventstore.clusterSize }}'
+              kubectl scale deployment.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-proxy' '--replicas={{.Values.proxy.replicas }}'
+      restartPolicy: Never
+      volumes:
+        - name: certs
+          emptyDir: {}

@@ -22,12 +22,6 @@
 *.tmproj
 .vscode/
 
-#templates/config.yaml
-#templates/edit-secrets-role.yaml
-#templates/secrets.yaml
-#templates/serviceaccount.yaml
-#templates/create-ca.yaml
-#templates/deployment.yaml
-#templates/network-policies.yaml
-#templates/service.yaml
-#templates/ingress.yaml
+#templates/eventstore
+#templates/*.yaml
+#templates/proxy

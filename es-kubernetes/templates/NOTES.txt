@@ -1,10 +1,5 @@
-﻿
-Installed chart as {{ include "chart.fullname" . }}
+﻿Installed chart as {{ include "esdb.fullname" . }}
 
-The rollout likely failed. Wait about a minute, then run the following command:
-kubectl rollout restart statefulset.apps {{ include "chart.fullname" . }}-cluster -n {{ .Release.Namespace }}
+The root CA and node certificates have been generated.
 
-2. Access certificates via the client-certs cli
-kubectl exec -n {{ .Release.Namespace }} {{ include "chart.fullname" . }}-cluster-0 -c proxy -- client-certs list
-kubectl exec -n {{ .Release.Namespace }} {{ include "chart.fullname" . }}-cluster-0 -c proxy -- client-certs create -n "ESDB Admin" -u admin -g '$admins, $ops'
-kubectl exec -n {{ .Release.Namespace }} {{ include "chart.fullname" . }}-cluster-0 -c proxy -- client-certs get -n "ESDB Admin" | base64 -d > client.pfx
+Access the UI at https://{{ index .Values.proxy.hosts "0" }}/web/index.html

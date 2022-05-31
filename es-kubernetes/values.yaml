@@ -1,57 +1,65 @@
 #Default values for eventstoredb deployment
 #Ensure to fill the relevant values for the public URLs
 
-clusterSize: 3
-
-#Configure the service account to run under
-serviceAccount:
-  create: true
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is automatically generated
-  name: ""
-
-podAnnotations: {}
-
-#Configure EventStoreDB cluster nodes
-cluster:
-  annotations: {}
-  nodeSelector: {}
-  terminationGracePeriodSeconds: 120
-  podSecurityContext:
-    #The default eventstore images run as the user eventstore:1000
-    fsGroup: 1000 
-  imagePullSecrets: {}
-
 #Configure the proxy helper image
-image:
-  repository: jeremysv/eventstore-proxy
-  tag: latest
-  pullPolicy: Always
-
+cliImages:
+  genCerts:
+    repository: eventstore/es-gencert-cli
+    tag: latest
+    pullPolicy: Always
+  kubectl:
+    repository: bitnami/kubectl
+    tag: latest
+    pullPolicy: Always
+  
 #Configure the public reverse proxy
 proxy:
-  #Configure the ingress resource
-  ingress:
-    annotations:
-  
   #Node domain names
   hosts:
-    '0': 'a.esdb.local'
-    '1': 'b.esdb.local'
-    '2': 'c.esdb.local'
+    "0": 'a.esdb.local'
+    "1": 'b.esdb.local'
+    "2": 'c.esdb.local'
+    
+  #Number of replicas for the deployment
+  replicas: 1
+  
+  #Configure the ingress resource
+  ingress:
+    class: ""
+    annotations: {}
+    tlsSecretName: ""
+  
+  #Deployment annotations
+  annotations: {}
+  
+  podAnnotations: {}
+
+  nodeSelector: { }
+
+  terminationGracePeriodSeconds: 120
+
+  podSecurityContext:
+    #The default eventstore images run as the user eventstore:1000
+    fsGroup: 1000
   
   #Configure the proxy resource limits
-  resources:
-    requests:
-      memory: 64Mi
-      cpu: 128m
-    limits:
-      memory: 512Mi
-      cpu: 1
+  #resources:
+  #  requests:
+  #    memory: 64Mi
+  #    cpu: 128m
+  #  limits:
+  #    memory: 512Mi
+  #    cpu: 1
+  
+  image:
+    repository: jeremysv/eventstore-proxy
+    tag: latest
+    imagePullPolicy: IfNotPresent
 
 #Configure the eventstore cluster containers
 eventstore:
+  clusterSize: 3
+  
   storage:
     data:
       class: premium
@@ -61,28 +69,56 @@ eventstore:
       class: premium
       annotations: {}
       size: 100Gi
-  
-  config:
-    #Custom eventstore config YAML. Overrides any values configured by proxy
-    shared: 'RunProjections: All'
-    '0': ''
-    '1': ''
-    '2': ''
     
   image:
     repository: eventstore/eventstore
-    #If tag is not provided, then chart appversion will be used
+    #If tag is not provided, then chart [appversion]-bionic will be used
     tag: ""
-    pullPolicy: Always
-    base: bionic #eventstore provides bionic and buster-slim base images
+    pullPolicy: IfNotPresent
+  
+  config:
+    #Custom eventstore config YAML. Overrides any values configured by proxy
+    shared:
+      RunProjections: All
+    '0': {}
+    '1': {}
+    '2': {}
+    
+  #StatefulSet anotations
+  annotations: {} 
+  
+  podAnnotations: {}
+  
+  nodeSelector: {}
+  
+  terminationGracePeriodSeconds: 120
+  
+  podSecurityContext:
+    #The default eventstore images run as the user eventstore:1000
+    fsGroup: 1000
+  
+  
   #Configure the node resource limits
-  resources:
-    requests:
-      memory: 256Mi
-      cpu: 250m
-    limits:
-      memory: 2Gi
-      cpu: '2'
-  startupProbe:
-    failureThreshold: 30
-    periodSeconds: 10
+  #resources:
+  #  requests:
+  #    memory: 256Mi
+  #    cpu: 250m
+  #  limits:
+  #    memory: 2Gi
+  #    cpu: '2'
+
+#Configure the service account to run under
+serviceAccount:
+  create: true
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is automatically generated
+  name: ""
+
+
+#Configure certificate validity in days
+certificatesLength:
+  ca: 3650
+  node: 3650
+
+imagePullSecrets: { }

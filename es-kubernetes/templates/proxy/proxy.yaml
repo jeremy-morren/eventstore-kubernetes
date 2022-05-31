@@ -1,0 +1,84 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "esdb.fullname" . }}-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4}}
+    app.kubernetes.io/component: proxy
+  {{- with .Values.proxy.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+spec:
+  #Will be scaled by setup
+  replicas: 0
+  selector:
+    matchLabels:
+      {{- include "esdb.labels" . | nindent 6}}
+      app.kubernetes.io/component: proxy
+  template:
+    metadata:
+      labels:
+        {{- include "esdb.labels" . | nindent 8}}
+        app.kubernetes.io/component: proxy
+      {{- with .Values.proxy.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8}}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "esdb.serviceAccountName" . }}
+      {{- with .Values.proxy.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: proxy
+          image: {{ .Values.proxy.image.repository}}:{{.Values.proxy.image.tag }}
+          imagePullPolicy: {{ .Values.proxy.image.imagePullPolicy }}
+          {{- with .Values.proxy.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end}}
+          env:
+            {{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
+            - name: PROXY_EventStore__{{$i}}__PublicHost
+              value: {{ index $.Values.proxy.hosts ($i | toString) }}
+            - name: PROXY_EventStore__{{$i}}__InternalHost
+              value: {{ print (include "esdb.fullname" $) "-cluster-" $i ":2113" }}
+            {{- end}}
+          ports:
+            - containerPort: 80
+              protocol: TCP
+              name: http
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - mountPath: /certs/ca
+              name: ca-certs
+          livenessProbe:
+            httpGet:
+              port: http
+              path: /healthz/live
+              
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.proxy.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      
+      volumes:
+        - name: ca-certs
+          secret:
+            secretName: {{ include "esdb.fullname" $}}-certs
+            defaultMode: 0440
+            items:
+              - key: ca.crt
+                path: ca.crt
+        
+          
+          
+  

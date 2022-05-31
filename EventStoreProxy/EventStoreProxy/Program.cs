@@ -1,10 +1,9 @@
+using System.Net;
 using EventStoreProxy;
 using EventStoreProxy.Authentication;
-using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
-using Yarp.ReverseProxy.Forwarder;
-using Yarp.ReverseProxy.Transforms;
-
 
 const string logTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
 
@@ -25,41 +24,81 @@ try
         .ReadFrom.Configuration(context.Configuration)
         .WriteTo.Console(outputTemplate: logTemplate));
 
+    var nodes = new List<EventStoreNode>();
+    builder.Configuration.GetSection("EventStore").Bind(nodes);
+    if (nodes.Count == 0)
+        throw new InvalidOperationException("Unable to get cluster nodes config");
+
+    Log.Information("Setting up proxy with cluster nodes {@ClusterNodes}", nodes);
+    builder.Services
+        .AddSingleton(nodes.ToArray())
+        .AddHttpForwarder()
+        .AddSingleton<ProxyForwarder>();
+
+    builder.Services.AddControllers();
+
     builder.Services.AddCors(options =>
     {
-        var clusterUrls = builder.Configuration["EventStore:ClusterUrls"]
-                              .Split(",", StringSplitOptions.TrimEntries)
-                          ?? throw new InvalidOperationException("EventStore:ClusterUrls not configured");
-        Log.Information("Setting up CORS with Cluster URLs {@ClusterUrls}", clusterUrls);
-        options.DefaultPolicyName = "ClusterPolicy";
-        options.AddPolicy("ClusterPolicy", b => b.WithOrigins(clusterUrls)
+        var origins = nodes.Select(n => $"https://{n.PublicHost}/").ToArray();
+        options.AddDefaultPolicy(b => b
+            .WithOrigins(origins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
     });
 
-    builder.Services.AddCertificateAuthentication(builder.Configuration.GetSection("EventStore:Certificates"));
+    builder.Services.AddHttpClient<BasicAuthenticationHandler>();
 
-    builder.Services.AddReverseProxy()
-        .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
-        .AddTransforms(builderContext => builderContext.UseESTrustedAuth());
+    builder.Services
+        .AddAuthentication(BasicAuthenticationDefaults.SchemeName)
+        .AddScheme<BasicAuthenticationHandlerOptions, BasicAuthenticationHandler>(
+            BasicAuthenticationDefaults.SchemeName, o=> o.Nodes = nodes.ToArray());
+
+    builder.Services.AddAuthorization(o => 
+        o.AddPolicy(BasicAuthenticationDefaults.SchemeName, new AuthorizationPolicyBuilder()
+            .AddAuthenticationSchemes(BasicAuthenticationDefaults.SchemeName)
+            .RequireAuthenticatedUser()
+            .Build()));
+    
+    builder.Services.AddHealthChecks();
 
     var app = builder.Build();
+
+    app.UseForwardedHeaders(new ForwardedHeadersOptions()
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedProto
+    });
     
     app.UseHttpsRedirection();
     
     app.UseHsts();
 
+    app.Use(async (HttpContext context, RequestDelegate next) =>
+    {
+        try
+        {
+            await next(context);
+        }
+        catch (AllNodesUnreachableException e)
+        {
+            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+                .CreateLogger(typeof(BasicAuthenticationHandler));
+            logger.LogError(e, "All cluster nodes unreachable for authentication");
+            context.Response.StatusCode = (int) HttpStatusCode.ServiceUnavailable;
+            await context.Response.WriteAsync(e.Message);
+        }
+    });
+
     app.UseRouting();
 
+    app.MapHealthChecks("/healthz/live");
+    
     app.UseCors();
 
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.UseAuthEndpoint();
-
-    app.MapReverseProxy();
+    app.MapControllers();
 
     app.Run();
 }

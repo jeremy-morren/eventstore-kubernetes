@@ -1,0 +1,37 @@
+﻿apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "esdb.fullname" . }}-roles
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: [ "get", "patch" ]
+  - apiGroups: ["apps"]
+    resources: 
+      - statefulsets
+      - statefulsets/scale
+      - deployments
+      - deployments/scale
+    verbs: ["get", "patch"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "esdb.fullname" . }}-rolebinding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "esdb.serviceAccountName" . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "esdb.fullname" . }}-roles

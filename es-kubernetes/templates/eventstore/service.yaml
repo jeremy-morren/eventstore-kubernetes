@@ -1,0 +1,28 @@
+﻿{{range $i, $e := until (.Values.eventstore.clusterSize | int) }} 
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "esdb.fullname" $}}-cluster-{{ $i | toString }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: cluster
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: tcp
+      port: 1113
+      protocol: TCP
+      targetPort: tcp
+    - name: http
+      port: 2113
+      protocol: TCP
+      targetPort: http
+  
+  selector:
+    {{- include "esdb.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: cluster
+    statefulset.kubernetes.io/pod-name: {{ include "esdb.fullname" $}}-cluster-{{ $i | toString }}
+---
+{{end}}

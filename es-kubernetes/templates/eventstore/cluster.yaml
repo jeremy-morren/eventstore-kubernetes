@@ -1,0 +1,143 @@
+﻿apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "esdb.fullname" . }}-cluster
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+  {{- with .Values.eventstore.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+spec:
+  serviceName: {{ include "esdb.fullname" .}}-cluster
+  selector:
+    matchLabels:
+      {{- include "esdb.labels" . | nindent 6 }}
+      app.kubernetes.io/component: cluster
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: Parallel
+  #Will be scaled by the setup job after certificates are created
+  replicas: 0
+  template:
+    metadata:
+      labels:
+        {{- include "esdb.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster
+      {{- with .Values.eventstore.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8}}
+      {{- end}}
+    spec:
+      serviceAccountName: {{ include "esdb.serviceAccountName" . }}
+      {{- with .Values.eventstore.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+        - name: esdb
+          image: '{{ .Values.eventstore.image.repository }}:{{ .Values.eventstore.image.tag | default (print .Chart.AppVersion "-bionic") }}'
+          imagePullPolicy: {{ .Values.eventstore.image.pullPolicy }}
+          {{- with .Values.eventstore.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{end}}
+          env:
+            - name: NODE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          args: [ '--config=/config/$(NODE)' ]
+          ports:
+            - containerPort: 1113
+              name: tcp
+              protocol: TCP
+            - containerPort: 2113
+              name: http
+              protocol: TCP
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - mountPath: /certs/node
+              name: node-certs
+            - mountPath: /certs/ca
+              name: ca-certs
+            - mountPath: /config
+              name: config
+            - mountPath: /data/db
+              name: {{ include "esdb.fullname" $}}-data
+            - mountPath: /data/log
+              name: {{ include "esdb.fullname" $}}-logs
+
+          #Probe the /info endpoint for liveness
+          #The /health/live endpoint fails when the cluster is invalid
+          livenessProbe:
+            exec:
+              command: ['curl', 'https://localhost:2113/info', '--fail', '--silent', '--cacert', '/certs/ca/ca.crt']
+
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}  
+      {{- with .Values.eventstore.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.eventstore.terminationGracePeriodSeconds }}
+
+      restartPolicy: Always
+      
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "esdb.fullname" $}}-config
+            defaultMode: 0440
+        - name: node-certs
+          secret:
+            secretName: {{ include "esdb.fullname" $}}-certs
+            defaultMode: 0440
+        - name: ca-certs
+          secret:
+            secretName: {{ include "esdb.fullname" $}}-certs
+            defaultMode: 0440
+            items:
+              - key: ca.crt
+                path: ca.crt
+              - key: ca.key
+                path: ca.key
+
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ include "esdb.fullname" $}}-data
+        labels:
+          {{- include "esdb.labels" . | nindent 10 }}
+          app.kubernetes.io/component: cluster
+        {{- with .Values.eventstore.storage.data.annotations }}
+        annotations:
+          {{ . | toYaml | nindent 10 }}
+        {{- end }}
+      spec:
+        storageClassName: {{ .Values.eventstore.storage.data.class }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.eventstore.storage.data.size }}
+    - metadata:
+        name: {{ include "esdb.fullname" $}}-logs
+        labels:
+          {{- include "esdb.labels" . | nindent 10 }}
+          app.kubernetes.io/component: cluster
+        {{- with .Values.eventstore.storage.logs.annotations }}
+        annotations:
+          {{ . | toYaml | nindent 10 }}
+        {{- end }}
+      spec:
+        storageClassName: {{ .Values.eventstore.storage.logs.class }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.eventstore.storage.logs.size }}
