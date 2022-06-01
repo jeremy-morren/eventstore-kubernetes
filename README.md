@@ -6,7 +6,7 @@ Use the following commands to install
 
 ```shell
 helm repo add es-kubernetes https://jeremy-morren.github.io/es-kubernetes/
-helm install esdb es-kubernetes --namespace esdb --create-namespace -f values.yaml
+helm install esdb es-kubernetes/eventstore --namespace esdb --create-namespace -f values.yaml
 ```
 
 > It may take a short while to install, due to the need to create an EventStore CA certificate. Please be patient.
