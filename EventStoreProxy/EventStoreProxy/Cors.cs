@@ -7,6 +7,7 @@ public static class Cors
     private static readonly string[] Headers =
     {
         HeaderNames.ContentType,
+        HeaderNames.Authorization,
 
         "ES-LongPoll",
         "ES-ExpectedVersion",

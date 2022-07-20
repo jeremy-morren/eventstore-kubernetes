@@ -19,8 +19,7 @@ spec:
   updateStrategy:
     type: RollingUpdate
   podManagementPolicy: Parallel
-  #Will be scaled by the setup job after certificates are created
-  replicas: 0
+  replicas: {{ .Values.eventstore.clusterSize }}
   template:
     metadata:
       labels:
@@ -67,9 +66,9 @@ spec:
             - mountPath: /config
               name: config
             - mountPath: /data/db
-              name: {{ include "esdb.fullname" $}}-data
+              name: data
             - mountPath: /data/log
-              name: {{ include "esdb.fullname" $}}-logs
+              name: logs
 
           #Probe the /info endpoint for liveness
           #The /health/live endpoint fails when the cluster is invalid
@@ -107,37 +106,43 @@ spec:
                 path: ca.crt
               - key: ca.key
                 path: ca.key
+        {{- if not .Values.eventstore.logs.persist }}
+        - name: logs
+          emptyDir: {}
+        {{- end }}
 
   volumeClaimTemplates:
     - metadata:
-        name: {{ include "esdb.fullname" $}}-data
+        name: data
         labels:
           {{- include "esdb.labels" . | nindent 10 }}
           app.kubernetes.io/component: cluster
-        {{- with .Values.eventstore.storage.data.annotations }}
+        {{- with .Values.eventstore.storage.annotations }}
         annotations:
           {{ . | toYaml | nindent 10 }}
         {{- end }}
       spec:
-        storageClassName: {{ .Values.eventstore.storage.data.class }}
+        storageClassName: {{ .Values.eventstore.storage.class }}
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ .Values.eventstore.storage.data.size }}
+            storage: {{ .Values.eventstore.storage.size }}
+  {{- if .Values.eventstore.logs.persist }}
     - metadata:
-        name: {{ include "esdb.fullname" $}}-logs
+        name: logs
         labels:
           {{- include "esdb.labels" . | nindent 10 }}
           app.kubernetes.io/component: cluster
-        {{- with .Values.eventstore.storage.logs.annotations }}
+        {{- with .Values.eventstore.logs.storage.annotations }}
         annotations:
           {{ . | toYaml | nindent 10 }}
         {{- end }}
       spec:
-        storageClassName: {{ .Values.eventstore.storage.logs.class }}
+        storageClassName: {{ .Values.eventstore.logs.storage.class }}
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ .Values.eventstore.storage.logs.size }}
+            storage: {{ .Values.eventstore.logs.storage.size }}
+  {{- end }}

@@ -5,30 +5,38 @@
 eventstore:
   clusterSize: 3
   
+  #Configure storage for EventStore data
   storage:
-    data:
-      class: premium
-      annotations: {}
-      size: 100Gi
-    logs:
-      class: premium
-      annotations: {}
-      size: 100Gi
-  
+    class: premium
+    annotations: { }
+    size: 100Gi
+
   image:
     repository: eventstore/eventstore
     #If tag is not provided, then chart [appversion]-bionic will be used
     tag: ""
     pullPolicy: IfNotPresent
-  
+
+  #Custom eventstore config YAML
+  #Note that we can use actual YAML here (rather than a string)
   config:
-    #Custom eventstore config YAML. Overrides any values configured by proxy
     shared:
       RunProjections: All
+
+    '0': { }
+    '1': { }
+    '2': { }
     
-    '0': {}
-    '1': {}
-    '2': {}
+  logs:
+    #If this is disabled, then an emptydir will be mounted for /logs
+    #Set to true if you wish to persist logs with a PVC
+    persist: false
+    storage:
+      #By default, the maximum log file size for
+      #EventstoreDB is 1 GB
+      class: standard
+      annotations: {}
+      size: 1Gi
   
   #StatefulSet anotations
   annotations: {}
@@ -60,11 +68,13 @@ proxy:
   #Public Node hostnames
   #Note that strange errors will occur if a host is not provided for all cluster nodes
   hosts:
-    '0': 'a.esdb.local'
-    '1': 'b.esdb.local'
-    '2': 'c.esdb.local'
+    '0': 'a.esdb.example.com'
+    '1': 'b.esdb.example.com'
+    '2': 'c.esdb.example.com'
   
   #Configure the ingress resource
+  #The ingress must support TLS passthrough for gRPC support
+  #The ingress is directed towards https port
   ingress:
     tlsSecretName: ""
     class: ""
@@ -72,8 +82,6 @@ proxy:
   
   #Configure the proxy deployment
   deployment:
-  
-    #Number of replicas for the deployment
     replicas: 1
     
     annotations: {}
@@ -110,7 +118,7 @@ serviceAccount:
   # If not set and create is true, a name is automatically generated
   name: ""
 
-#Configure the helper CLI images (used by certificate setup)
+#Configure the helper CLI images (used by certificate setup job)
 cliImages:
   genCerts:
     repository: eventstore/es-gencert-cli

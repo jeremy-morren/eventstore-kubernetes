@@ -12,7 +12,7 @@ metadata:
   {{- end }}
 spec:
   #Will be scaled by setup
-  replicas: 0
+  replicas: {{ .Values.proxy.deployment.replicas }}
   selector:
     matchLabels:
       {{- include "esdb.labels" . | nindent 6}}
