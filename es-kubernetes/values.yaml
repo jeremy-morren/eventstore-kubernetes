@@ -1,89 +1,7 @@
 #Default values for eventstoredb deployment
-#Ensure to fill the relevant values for the public URLs
+#Ensure that you provide the relevant values for the public URLs
 
-#Configure the proxy helper image
-cliImages:
-  genCerts:
-    repository: eventstore/es-gencert-cli
-    tag: latest
-    pullPolicy: Always
-  kubectl:
-    repository: bitnami/kubectl
-    tag: latest
-    pullPolicy: Always
-  
-#Configure the public reverse proxy
-proxy:
-  #Node domain names
-  hosts:
-    "0": 'a.esdb.local'
-    "1": 'b.esdb.local'
-    "2": 'c.esdb.local'
-    
-  #Number of replicas for the deployment
-  replicas: 1
-    
-  service:
-    #Host to forward acme challenges to (will return a 307)
-    #Must be a fully qualified url
-    acmeHost: "http://ingress.example.com/"
-    annotations: {}
-  
-  tlsSecretName: ""
-  
-  #Configure the cert-manager.io/certificate resource
-  certificate:
-    create: true
-    issuer:
-      name: default
-      kind: ClusterIssuer
-      group: cert-manager.io
-  
-#  #Configure the ingress resource
-#  #The ingress controller must support tls passthrough
-#  ingress:
-#    tlsSecretName: ""
-#    
-#    class: ""
-#    annotations: {}
-#    
-#    #If class is nginx
-#    #annotations:
-#    #  nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-#    #  nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-#    #If class is haproxy
-#    #annotations:
-#    #  kubernetes.io/tls-passthrough: "true"
-    
-  
-  #Deployment annotations
-  annotations: {}
-  
-  podAnnotations: {}
-
-  nodeSelector: { }
-
-  terminationGracePeriodSeconds: 120
-
-  podSecurityContext:
-    #The default eventstore images run as the user eventstore:1000
-    fsGroup: 1000
-  
-  #Configure the proxy resource limits
-  #resources:
-  #  requests:
-  #    memory: 64Mi
-  #    cpu: 128m
-  #  limits:
-  #    memory: 512Mi
-  #    cpu: 1
-  
-  image:
-    repository: jeremysv/eventstore-proxy
-    tag: latest
-    imagePullPolicy: IfNotPresent
-
-#Configure the eventstore cluster containers
+#Configure the eventstore cluster
 eventstore:
   clusterSize: 3
   
@@ -96,7 +14,7 @@ eventstore:
       class: premium
       annotations: {}
       size: 100Gi
-    
+  
   image:
     repository: eventstore/eventstore
     #If tag is not provided, then chart [appversion]-bionic will be used
@@ -107,12 +25,13 @@ eventstore:
     #Custom eventstore config YAML. Overrides any values configured by proxy
     shared:
       RunProjections: All
+    
     '0': {}
     '1': {}
     '2': {}
-    
+  
   #StatefulSet anotations
-  annotations: {} 
+  annotations: {}
   
   podAnnotations: {}
   
@@ -123,7 +42,8 @@ eventstore:
   podSecurityContext:
     #The default eventstore images run as the user eventstore:1000
     fsGroup: 1000
-  
+    
+  affinity: {}
   
   #Configure the node resource limits
   #resources:
@@ -133,6 +53,54 @@ eventstore:
   #  limits:
   #    memory: 2Gi
   #    cpu: '2'
+  
+#Configure the public reverse proxy
+proxy:
+  
+  #Public Node hostnames
+  #Note that strange errors will occur if a host is not provided for all cluster nodes
+  hosts:
+    '0': 'a.esdb.local'
+    '1': 'b.esdb.local'
+    '2': 'c.esdb.local'
+  
+  #Configure the ingress resource
+  ingress:
+    tlsSecretName: ""
+    class: ""
+    annotations: {}
+  
+  #Configure the proxy deployment
+  deployment:
+  
+    #Number of replicas for the deployment
+    replicas: 1
+    
+    annotations: {}
+    
+    podAnnotations: {}
+  
+    nodeSelector: { }
+
+    terminationGracePeriodSeconds: 120
+    
+    podSecurityContext: {}
+    
+    #Configure the proxy deployment resource limits
+    #resources:
+    #  requests:
+    #    memory: 64Mi
+    #    cpu: 128m
+    #  limits:
+    #    memory: 512Mi
+    #    cpu: 1
+    
+    affinity: {}
+  
+    image:
+      repository: jeremysv/eventstore-proxy
+      tag: latest
+      imagePullPolicy: IfNotPresent
 
 #Configure the service account to run under
 serviceAccount:
@@ -142,6 +110,16 @@ serviceAccount:
   # If not set and create is true, a name is automatically generated
   name: ""
 
+#Configure the helper CLI images (used by certificate setup)
+cliImages:
+  genCerts:
+    repository: eventstore/es-gencert-cli
+    tag: latest
+    pullPolicy: Always
+  kubectl:
+    repository: bitnami/kubectl
+    tag: latest
+    pullPolicy: Always
 
 #Configure certificate validity in days
 certificatesLength:

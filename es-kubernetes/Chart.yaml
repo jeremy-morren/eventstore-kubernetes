@@ -1,6 +1,6 @@
 ﻿apiVersion: v2
-name: eventstore
-description:  A Helm chart to install a secure EventStore cluster
+name: es-kubernetes
+description:  A Helm chart to install a secure EventStore cluster in Kubernetes
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "21.10.2"

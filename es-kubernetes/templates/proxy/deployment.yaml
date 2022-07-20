@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "esdb.labels" . | nindent 4}}
     app.kubernetes.io/component: proxy
-  {{- with .Values.proxy.annotations }}
+  {{- with .Values.proxy.deployment.annotations }}
   annotations:
     {{- toYaml . | nindent 4}}
   {{- end }}
@@ -22,21 +22,21 @@ spec:
       labels:
         {{- include "esdb.labels" . | nindent 8}}
         app.kubernetes.io/component: proxy
-      {{- with .Values.proxy.podAnnotations }}
+      {{- with .Values.proxy.deployment.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8}}
       {{- end }}
     spec:
       serviceAccountName: {{ include "esdb.serviceAccountName" . }}
-      {{- with .Values.proxy.podSecurityContext }}
+      {{- with .Values.proxy.deployment.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
         - name: proxy
-          image: {{ .Values.proxy.image.repository}}:{{.Values.proxy.image.tag }}
-          imagePullPolicy: {{ .Values.proxy.image.imagePullPolicy }}
-          {{- with .Values.proxy.resources }}
+          image: {{ .Values.proxy.deployment.image.repository}}:{{.Values.proxy.deployment.image.tag }}
+          imagePullPolicy: {{ .Values.proxy.deployment.image.imagePullPolicy }}
+          {{- with .Values.proxy.deployment.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end}}
@@ -47,9 +47,10 @@ spec:
             - name: PROXY_EventStore__{{$i}}__InternalHost
               value: {{ print (include "esdb.fullname" $) "-cluster-" $i ":2113" }}
             {{- end}}
-            - name: PROXY_AcmeHost
-              value: {{ .Values.proxy.service.acmeHost }}
           ports:
+            - containerPort: 80
+              protocol: TCP
+              name: http
             - containerPort: 443
               protocol: TCP
               name: https
@@ -57,23 +58,32 @@ spec:
           volumeMounts:
             - mountPath: /certs/ca
               name: ca-certs
-            - mountPath: /certs/public
-              name: public-certs
+            - mountPath: /tls
+              name: tls-cert
           livenessProbe:
             httpGet:
               port: https
               path: /healthz/live
               scheme: HTTPS
+{{/*          readinessProbe:*/}}
+{{/*            httpGet:*/}}
+{{/*              port: https*/}}
+{{/*              path: /healthz/ready*/}}
+{{/*              scheme: HTTPS*/}}
               
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.proxy.nodeSelector }}
+      {{- with .Values.proxy.deployment.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       restartPolicy: Always
+      {{- with .Values.proxy.deployment.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8}}
+      {{- end}}
       
       volumes:
         - name: ca-certs
@@ -83,10 +93,9 @@ spec:
             items:
               - key: ca.crt
                 path: ca.crt
-        - name: public-certs
+        - name: tls-cert
           secret:
             secretName: {{ include "helpers.tlssecret" .}}
-            optional: true
             defaultMode: 0440
         
           

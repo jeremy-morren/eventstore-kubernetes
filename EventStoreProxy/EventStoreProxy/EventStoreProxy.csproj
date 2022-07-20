@@ -8,24 +8,19 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
-        <PackageReference Include="Serilog.AspNetCore" Version="5.0.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="4.0.1" />
-        <PackageReference Include="Yarp.ReverseProxy" Version="1.1.0" />
+        <PackageReference Include="Polly.Extensions.Http" Version="3.0.0"/>
+        <PackageReference Include="Serilog.AspNetCore" Version="5.0.0"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="4.0.1"/>
+        <PackageReference Include="Yarp.ReverseProxy" Version="1.1.0"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Content Update="appsettings.Development.json">
-        <DependentUpon>appsettings.json</DependentUpon>
-      </Content>
-      <Content Update="appsettings.Production.json">
-        <DependentUpon>appsettings.json</DependentUpon>
-      </Content>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Transformers" />
-      <Folder Include="wwwroot" />
+        <Content Update="appsettings.Development.json">
+            <DependentUpon>appsettings.json</DependentUpon>
+        </Content>
+        <Content Update="appsettings.Production.json">
+            <DependentUpon>appsettings.json</DependentUpon>
+        </Content>
     </ItemGroup>
 
 </Project>

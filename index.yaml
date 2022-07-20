@@ -1,14 +1,14 @@
 apiVersion: v1
 entries:
-  eventstore:
+  es-kubernetes:
   - apiVersion: v2
     appVersion: 21.10.2
-    created: "2022-05-31T18:20:36.857597484+08:00"
-    description: A Helm chart to install a secure EventStore cluster
-    digest: e5a0bcc149724f20c8b0b0d7bde96e4d4bd7f770bd493320248fc2b30968b662
-    name: eventstore
+    created: "2022-07-20T11:43:58.708149854+08:00"
+    description: A Helm chart to install a secure EventStore cluster in Kubernetes
+    digest: 3b0bd5895f0de29dde4de1cd806389651cc06fef1f72cfed8038b659193de004
+    name: es-kubernetes
     type: application
     urls:
-    - https://jeremy-morren.github.io/es-kubernetes/charts/eventstore-0.1.0.tgz
-    version: 0.1.0
-generated: "2022-05-31T18:20:36.85340542+08:00"
+    - https://jeremy-morren.github.io/es-kubernetes/charts/es-kubernetes-0.2.0.tgz
+    version: 0.2.0
+generated: "2022-07-20T11:43:58.703001285+08:00"

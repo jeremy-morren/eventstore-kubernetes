@@ -54,5 +54,5 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "helpers.tlssecret" }}
-{{- .Values.proxy.tlsSecretName | default (print (include "esdb.fullname" .) "-ingress-tls") }}
+{{- .Values.proxy.ingress.tlsSecretName | default (print (include "esdb.fullname" .) "-ingress-tls") }}
 {{- end}}

@@ -1,0 +1,36 @@
+﻿apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "esdb.fullname" $}}-ingress
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: proxy
+  {{- with .Values.proxy.ingress.annotations }}
+  annotations:
+    ingress.kubernetes.io/force-ssl-redirect: 'true'
+    ingress.kubernetes.io/ssl-passthrough: 'true'
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+spec:
+  {{- if .Values.proxy.ingress.class }}
+  ingressClassName: {{ .Values.proxy.ingress.class }}
+  {{- end }}
+  tls:
+    - secretName: {{ include "helpers.tlssecret" $ }}
+      hosts:
+    {{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
+        - {{ index $.Values.proxy.hosts ($i | toString) | toString }}
+    {{- end }}
+  rules:
+  {{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
+    - host: {{ index $.Values.proxy.hosts ($i | toString) | toString }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: {{ include "esdb.fullname" $ }}-proxy
+                port: { name: https }
+            path: /
+            pathType: Prefix
+  {{- end }}

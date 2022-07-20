@@ -25,5 +25,3 @@
 #templates/eventstore
 #templates/*.yaml
 #templates/proxy
-
-templates/proxy/ingress.yaml

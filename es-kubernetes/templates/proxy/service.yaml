@@ -6,12 +6,8 @@ metadata:
   labels:
     {{- include "esdb.labels" $ | nindent 4 }}
     app.kubernetes.io/component: proxy
-  {{- with .Values.proxy.service.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4}}
-  {{- end}}
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - name: http
       port: 80

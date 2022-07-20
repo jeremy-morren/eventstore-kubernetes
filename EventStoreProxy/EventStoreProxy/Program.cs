@@ -1,9 +1,8 @@
 using System.Net;
 using EventStoreProxy;
 using EventStoreProxy.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
+using Serilog.Events;
 
 const string logTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
 
@@ -15,16 +14,18 @@ try
 {
     Log.Debug("Starting web host");
     var builder = WebApplication.CreateBuilder(args);
-    
-    builder.Configuration.AddEnvironmentVariables("PROXY_");
 
-    if (string.IsNullOrWhiteSpace(builder.Configuration["AcmeHost"]))
-        throw new InvalidOperationException("AcmeHost configuration not found");
+    builder.Configuration.AddEnvironmentVariables("PROXY_");
 
     builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
 
     builder.Host.UseSerilog((context, conf) => conf
         .ReadFrom.Configuration(context.Configuration)
+        //Filter healthcheck endpoints
+        .Filter.ByExcluding(e =>
+            e.Properties.TryGetValue("RequestPath", out var path)
+            && path is ScalarValue {Value: string pathStr}
+            && pathStr.StartsWith("/healthz"))
         .WriteTo.Console(outputTemplate: logTemplate));
 
     var nodes = new List<EventStoreNode>();
@@ -35,32 +36,25 @@ try
     Log.Information("Setting up proxy with cluster nodes {@ClusterNodes}", nodes);
     builder.Services
         .AddSingleton(nodes.ToArray())
+        .AddCors(nodes);
+
+    builder.Services
         .AddHttpForwarder()
-        .AddSingleton<ProxyForwarder>();
+        .AddSingleton<ProxyForwarder>()
+        .AddSingleton<ProxyTransformer>();
 
     builder.Services.AddControllers();
 
-    builder.Services.AddCors();
-    
-    builder.Services.AddHttpClient<BasicAuthenticationHandler>();
+    builder.Services.AddBasicAuthentication();
 
-    builder.Services
-        .AddAuthentication(BasicAuthenticationDefaults.SchemeName)
-        .AddScheme<BasicAuthenticationHandlerOptions, BasicAuthenticationHandler>(
-            BasicAuthenticationDefaults.SchemeName, o=> o.Nodes = nodes.ToArray());
-
-    builder.Services.AddAuthorization(o => 
-        o.AddPolicy(BasicAuthenticationDefaults.SchemeName, new AuthorizationPolicyBuilder()
-            .AddAuthenticationSchemes(BasicAuthenticationDefaults.SchemeName)
-            .RequireAuthenticatedUser()
-            .Build()));
-    
     builder.Services.AddHealthChecks();
 
+    builder.Services.Configure<List<EventStoreNode>>(builder.Configuration.GetSection("Proxy"));
+
     var app = builder.Build();
-    
+
     app.UseHttpsRedirection();
-    
+
     app.UseHsts();
 
     app.Use(async (HttpContext context, RequestDelegate next) =>
@@ -82,15 +76,8 @@ try
     app.UseRouting();
 
     app.MapHealthChecks("/healthz/live");
-    
-    app.UseCors(b =>
-    {
-        var origins = nodes.Select(n => $"https://{n.PublicHost}/").ToArray();
-        b.WithOrigins(origins.ToArray())
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
+
+    app.UseCors();
 
     app.UseAuthentication();
     app.UseAuthorization();

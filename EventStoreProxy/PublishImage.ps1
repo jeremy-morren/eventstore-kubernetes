@@ -6,5 +6,5 @@ param(
 
 $name = "$Repository/${name}:$Tag"
 
-docker build -t $name $PSScriptRoot
-docker push $name
+docker build -t $name (Join-Path $PSScriptRoot "EventStoreProxy")
+#docker push $name
