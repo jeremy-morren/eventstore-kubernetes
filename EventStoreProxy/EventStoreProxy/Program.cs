@@ -1,10 +1,12 @@
 using System.Net;
 using EventStoreProxy;
 using EventStoreProxy.Authentication;
+using EventStoreProxy.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
 
-const string logTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
+const string logTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss}] [{Level:u3}] {Message:lj}{NewLine}{Exception}";
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(outputTemplate: logTemplate)
@@ -19,13 +21,9 @@ try
 
     builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
 
-    builder.Host.UseSerilog((context, conf) => conf
+    builder.Host.UseSerilog((context, services, conf) => conf
         .ReadFrom.Configuration(context.Configuration)
-        //Filter healthcheck endpoints
-        .Filter.ByExcluding(e =>
-            e.Properties.TryGetValue("RequestPath", out var path)
-            && path is ScalarValue {Value: string pathStr}
-            && pathStr.StartsWith("/healthz"))
+        .ReadFrom.Services(services)
         .WriteTo.Console(outputTemplate: logTemplate));
 
     var nodes = new List<EventStoreNode>();
@@ -41,43 +39,38 @@ try
     builder.Services
         .AddHttpForwarder()
         .AddSingleton<ProxyForwarder>()
-        .AddSingleton<ProxyTransformer>();
+        .AddSingleton<ProxyTransformer>()
+        .AddHealthChecks();
 
     builder.Services.AddControllers();
 
     builder.Services.AddBasicAuthentication();
 
-    builder.Services.AddHealthChecks();
-
     builder.Services.Configure<List<EventStoreNode>>(builder.Configuration.GetSection("Proxy"));
 
     var app = builder.Build();
+
+    app.UseForwardedHeaders(new ForwardedHeadersOptions()
+    {
+        ForwardedHeaders = ForwardedHeaders.All
+    });
 
     app.UseHttpsRedirection();
 
     app.UseHsts();
 
-    app.Use(async (HttpContext context, RequestDelegate next) =>
+    app.UseSerilogRequestLogging(o =>
     {
-        try
-        {
-            await next(context);
-        }
-        catch (AllNodesUnreachableException e)
-        {
-            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
-                .CreateLogger(typeof(BasicAuthenticationHandler));
-            logger.LogError(e, "All cluster nodes unreachable for authentication");
-            context.Response.StatusCode = (int) HttpStatusCode.ServiceUnavailable;
-            await context.Response.WriteAsync(e.Message);
-        }
+        o.GetLevel = (c, _, _) => c.Request.Path.StartsWithSegments("/healthz/live")
+            ? LogEventLevel.Debug
+            : LogEventLevel.Information;
     });
 
-    app.UseRouting();
-
-    app.MapHealthChecks("/healthz/live");
-
     app.UseCors();
+
+    app.MapHealthChecks("/healthz/live", HttpStatusCode.ServiceUnavailable);
+
+    app.UseRouting();
 
     app.UseAuthentication();
     app.UseAuthorization();

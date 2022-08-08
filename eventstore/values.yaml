@@ -2,20 +2,23 @@
 #Ensure that you provide the relevant values for the public URLs
 
 #Configure the eventstore cluster
-eventstore:
+deployment:
+  
   clusterSize: 3
+  
+  #Public Node hostnames
+  #Will be set on ingress controller
+  #Note that strange errors will occur if a host is not provided for all cluster nodes
+  hosts:
+    '0': 'a.esdb.example.com'
+    '1': 'b.esdb.example.com'
+    '2': 'c.esdb.example.com'
   
   #Configure storage for EventStore data
   storage:
     class: premium
-    annotations: { }
+    annotations: {}
     size: 100Gi
-
-  image:
-    repository: eventstore/eventstore
-    #If tag is not provided, then chart [appversion]-bionic will be used
-    tag: ""
-    pullPolicy: IfNotPresent
 
   #Custom eventstore config YAML
   #Note that we can use actual YAML here (rather than a string)
@@ -38,7 +41,50 @@ eventstore:
       annotations: {}
       size: 1Gi
   
-  #StatefulSet anotations
+  
+  #Configure reverse proxy container
+  proxy:
+    image:
+      repository: jeremysv/eventstoreproxy
+      tag: latest
+      imagePullPolicy: IfNotPresent
+      
+    #Configure the proxy resource limits
+    resources: {}
+#      requests:
+#        memory: 64Mi
+#        cpu: 64m
+#      limits:
+#        memory: 512Mi
+#        cpu: 512m
+  
+  #Configure the eventstore container
+  esdb:
+    image:
+      repository: eventstore/eventstore
+      #If tag is not provided, then chart [appversion]-bionic will be used
+      tag: ""
+      pullPolicy: IfNotPresent
+      
+    # The liveness probe on a cluster node fails when the cluster is invalid
+    # For liveness, if the cluster is briefly invalid, do not kill the node
+    
+    # Default 1 Minute
+    liveness:
+      failureThreshold: 6
+      periodSeconds: 10
+      
+    #Configure the node resource limits
+    resources: {}
+#      requests:
+#        memory: 128Mi
+#        cpu: 250m
+#      limits:
+#        memory: 2Gi
+#        cpu: '2'
+    
+  
+  #StatefulSet annotations
   annotations: {}
   
   podAnnotations: {}
@@ -52,63 +98,13 @@ eventstore:
     fsGroup: 1000
     
   affinity: {}
-  
-  #Configure the node resource limits
-  #resources:
-  #  requests:
-  #    memory: 256Mi
-  #    cpu: 250m
-  #  limits:
-  #    memory: 2Gi
-  #    cpu: '2'
-  
-#Configure the public reverse proxy
-proxy:
-  
-  #Public Node hostnames
-  #Note that strange errors will occur if a host is not provided for all cluster nodes
-  hosts:
-    '0': 'a.esdb.example.com'
-    '1': 'b.esdb.example.com'
-    '2': 'c.esdb.example.com'
-  
-  #Configure the ingress resource
-  #The ingress must support TLS passthrough for gRPC support
-  #The ingress is directed towards https port
-  ingress:
-    tlsSecretName: ""
-    class: ""
-    annotations: {}
-  
-  #Configure the proxy deployment
-  deployment:
-    replicas: 1
-    
-    annotations: {}
-    
-    podAnnotations: {}
-  
-    nodeSelector: { }
 
-    terminationGracePeriodSeconds: 120
-    
-    podSecurityContext: {}
-    
-    #Configure the proxy deployment resource limits
-    #resources:
-    #  requests:
-    #    memory: 64Mi
-    #    cpu: 128m
-    #  limits:
-    #    memory: 512Mi
-    #    cpu: 1
-    
-    affinity: {}
-  
-    image:
-      repository: jeremysv/eventstore-proxy
-      tag: latest
-      imagePullPolicy: IfNotPresent
+#Configure the ingress resource
+#Backend protocol must be http2/grpc
+ingress:
+  tlsSecretName: ""
+  class: ""
+  annotations: {}
 
 #Configure the service account to run under
 serviceAccount:

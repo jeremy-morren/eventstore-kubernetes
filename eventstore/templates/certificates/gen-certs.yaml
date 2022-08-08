@@ -1,15 +1,11 @@
 ﻿# Generate esdb certs for nodes
-# Also generate Default proxy TLS
-  
-# We want to generate the proxy certificate ASAP
-# So we run that as the first init container
-  
-# Second init container generates certificates using es-gencert-cli image
+# Init container generates certificates using es-gencert-cli image
 # Actual container patches the esdb-certs secret
   
+#DNS names for certificate
 {{- $dnsNames := list}}
-{{- range $i, $e := until ($.Values.eventstore.clusterSize | int) }}
-  {{- $dnsNames = append $dnsNames (print "DNS:" (index $.Values.proxy.hosts ($i | toString))) }}
+{{- range $i, $e := until ($.Values.deployment.clusterSize | int) }}
+  {{- $dnsNames = append $dnsNames (print "DNS:" (index $.Values.deployment.hosts ($i | toString))) }}
 {{- end }}
 
 apiVersion: batch/v1
@@ -21,7 +17,7 @@ metadata:
     {{- include "esdb.labels" . | nindent 4 }}
     app.kubernetes.io/component: cluster
   annotations:
-    "helm.sh/hook": post-install
+    "helm.sh/hook": post-install,post-upgrade
 spec:
   ttlSecondsAfterFinished: 100
   backoffLimit: 2
@@ -45,7 +41,7 @@ spec:
             - |
               es-gencert-cli create-ca -days '{{.Values.certificatesLength.ca }}' -out /certs/ca
               chmod 444 /certs/ca/*
-              {{range $i, $e := until (.Values.eventstore.clusterSize | int) }}
+              {{range $i, $e := until (.Values.deployment.clusterSize | int) }}
               es-gencert-cli create-node -days '{{ $.Values.certificatesLength.node}}' \
                 -ca-certificate /certs/ca/ca.crt -ca-key /certs/ca/ca.key \
                 -dns-names 'localhost,{{ include "esdb.fullname" $ }}-cluster-{{$i}}' \
@@ -65,64 +61,28 @@ spec:
             - /bin/bash
             - '-c'
             - |
-              #--- Create esdb certs
-              #We only need to do anything if the certs do not exist
-              crt=$(kubectl get secret '{{ include "esdb.fullname" . }}-certs' -n '{{ .Release.Namespace }}' -o json \
-                | jq '.data."ca.crt" // empty' -r)
-              
-              if [[ -z "$crt" ]]; then
-                #Start by patching esdb certs
-                #Args are $1=key $2=filename
-                values='{}'
-                patch() {
-                  #Append key/value to values
-                  values=$(jq -c --arg k "$1" --arg v "$(base64 -w 0 $2)" '. += { ($k): $v }' <<<"$values")
-                }
-                patch ca.crt /certs/ca/ca.crt
-                patch ca.key /certs/ca/ca.key
-                {{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
-                patch node-{{$i}}.crt /certs/{{$i}}/node.crt
-                patch node-{{$i}}.key /certs/{{$i}}/node.key
-                {{- end}}
-  
-                #Build final patch json
-                json=$(jq --argjson v "$values" '.[0] |= { "op": "replace", "path": "/data", "value": $v }'<<<'[]')
-                kubectl patch secret -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-certs' --type=json "-p=$json"
-                #Mark the secret as immutable
-                kubectl patch secret -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-certs' --type=json \
-                  '-p=[ { "op": "replace", "path": "/immutable", "value": true } ]'
-  
-                echo "Patched secret {{ include "esdb.fullname" . }}-certs"
-                #Restart rollout (now that the certificates are available)
-                kubectl rollout restart statefulset.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-cluster'
-              else
-                echo "ESDB certs already exist, ignoring"
-              fi
+              #Start by patching esdb certs
+              #Args are $1=key $2=filename
+              values='{}'
+              patch() {
+                #Append key/value to values
+                values=$(jq -c --arg k "$1" --arg v "$(base64 -w 0 $2)" '. += { ($k): $v }' <<<"$values")
+              }
+              patch ca.crt /certs/ca/ca.crt
+              patch ca.key /certs/ca/ca.key
+              {{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
+              patch node-{{$i}}.crt /certs/{{$i}}/node.crt
+              patch node-{{$i}}.key /certs/{{$i}}/node.key
+              {{- end}}
 
-              #---- Create proxy tls
+              #Build final patch json
+              json=$(jq --argjson v "$values" '.[0] |= { "op": "replace", "path": "/data", "value": $v }'<<<'[]')
+              kubectl patch secret -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-certs' --type=json "-p=$json"
               
-              #We have to allow for the possibility that cert-manager has already generated a real TLS cert
-              #If we use create, then we will get a 'secret already exists' error
-              #Which actually suits us just fine, as we do not want to overwrite anything
+              echo "Patched secret {{ include "esdb.fullname" . }}-certs"
+              #Restart rollout (now that the certificates are available)
+              kubectl rollout restart statefulset.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-cluster'
               
-              #Generate fake proxy certificate
-              openssl req -x509 \
-                -newkey rsa:2048 \
-                -addext 'subjectAltName = {{ join "," $dnsNames }}' \
-                -out /tmp/tls.crt -keyout /tmp/tls.key \
-                -nodes \
-                -days 3650 \
-                -subj "/CN=Fake EventStoreDB Ingress Certificate"
-              
-              kubectl create secret tls '{{ include "helpers.tlssecret" . }}' --cert /tmp/tls.crt --key /tmp/tls.key
-              if [ $? -eq 0 ]; then
-                echo Created TLS secret '{{ include "helpers.tlssecret" . }}'
-              
-                #Restart rollout (now that the tls cert is available)
-                kubectl rollout restart deployment.apps -n '{{ .Release.Namespace }}' '{{ include "esdb.fullname" . }}-proxy'
-              else
-                echo TLS secret '{{ include "helpers.tlssecret" . }}' already exists, ignoring
-              fi
       restartPolicy: Never
       volumes:
         - name: certs

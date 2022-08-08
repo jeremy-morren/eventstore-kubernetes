@@ -1,4 +1,4 @@
-﻿{{range $i, $e := until (.Values.eventstore.clusterSize | int) }} 
+﻿{{range $i, $e := until (.Values.deployment.clusterSize | int) }} 
 apiVersion: v1
 kind: Service
 metadata:
@@ -15,10 +15,19 @@ spec:
       port: 1113
       protocol: TCP
       targetPort: tcp
-    - name: http
+    - name: gossip
       port: 2113
       protocol: TCP
-      targetPort: http
+      targetPort: gossip
+      
+    - name: http1
+      port: 90
+      protocol: TCP
+      targetPort: http1
+    - name: http2
+      port: 80
+      protocol: TCP
+      targetPort: http2
   
   selector:
     {{- include "esdb.labels" $ | nindent 4 }}

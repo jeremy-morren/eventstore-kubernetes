@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "esdb.labels" . | nindent 4 }}
     app.kubernetes.io/component: cluster
-  {{- with .Values.eventstore.annotations }}
+  {{- with .Values.deployment.annotations }}
   annotations:
     {{- toYaml . | nindent 4}}
   {{- end }}
@@ -19,28 +19,28 @@ spec:
   updateStrategy:
     type: RollingUpdate
   podManagementPolicy: Parallel
-  replicas: {{ .Values.eventstore.clusterSize }}
+  replicas: {{ .Values.deployment.clusterSize }}
   template:
     metadata:
       labels:
         {{- include "esdb.labels" . | nindent 8 }}
         app.kubernetes.io/component: cluster
-      {{- with .Values.eventstore.podAnnotations }}
+      {{- with .Values.deployment.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8}}
       {{- end}}
     spec:
       serviceAccountName: {{ include "esdb.serviceAccountName" . }}
-      {{- with .Values.eventstore.podSecurityContext }}
+      {{- with .Values.deployment.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
       containers:
         - name: esdb
-          image: '{{ .Values.eventstore.image.repository }}:{{ .Values.eventstore.image.tag | default (print .Chart.AppVersion "-bionic") }}'
-          imagePullPolicy: {{ .Values.eventstore.image.pullPolicy }}
-          {{- with .Values.eventstore.resources }}
+          image: '{{ .Values.deployment.esdb.image.repository }}:{{ .Values.deployment.esdb.image.tag | default (print .Chart.AppVersion "-bionic") }}'
+          imagePullPolicy: {{ .Values.deployment.esdb.image.pullPolicy }}
+          {{- with .Values.deployment.esdb.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{end}}
@@ -49,13 +49,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+          # Load the correct config (generated in config.yaml)
           args: [ '--config=/config/$(NODE)' ]
           ports:
             - containerPort: 1113
               name: tcp
               protocol: TCP
             - containerPort: 2113
-              name: http
+              name: gossip
               protocol: TCP
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
@@ -70,21 +71,55 @@ spec:
             - mountPath: /data/log
               name: logs
 
-          #Probe the /info endpoint for liveness
-          #The /health/live endpoint fails when the cluster is invalid
+          # The /health/live endpoint fails when the cluster is invalid
+          # So we need to give the node time to join the cluster
           livenessProbe:
             exec:
-              command: ['curl', 'https://localhost:2113/info', '--fail', '--silent', '--cacert', '/certs/ca/ca.crt']
+              command: ['curl', 'https://localhost:2113/health/live', '--fail', '--silent', '--cacert', '/certs/ca/ca.crt']
+            failureThreshold: {{ .Values.deployment.esdb.liveness.failureThreshold }}
+            periodSeconds: {{ .Values.deployment.esdb.liveness.periodSeconds }}
+              
+          # No readiness probe is defined, because the clients will determine the best node
+          # Even if the node is not ready, it should still be exposed to the clients
+          # This may need revisiting however
+            
+        - name: proxy
+          image: {{ .Values.deployment.proxy.image.repository}}:{{.Values.deployment.proxy.image.tag }}
+          imagePullPolicy: {{ .Values.deployment.proxy.image.imagePullPolicy }}
+          {{- with .Values.deployment.proxy.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end}}
+          env:
+          {{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
+            - name: PROXY_EventStore__{{$i}}__Host
+              value: {{ index $.Values.deployment.hosts ($i | toString) }}
+          {{- end}}
+          ports:
+            - containerPort: 80
+              protocol: TCP
+              name: http2
+            - containerPort: 90
+              protocol: TCP
+              name: http1
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - mountPath: /certs/ca
+              name: ca-certs
+          livenessProbe:
+            httpGet:
+              port: http1
+              path: /healthz/live
 
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}  
-      {{- with .Values.eventstore.nodeSelector }}
+      {{- with .Values.deployment.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      terminationGracePeriodSeconds: {{ .Values.eventstore.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.deployment.terminationGracePeriodSeconds }}
 
       restartPolicy: Always
       
@@ -106,7 +141,7 @@ spec:
                 path: ca.crt
               - key: ca.key
                 path: ca.key
-        {{- if not .Values.eventstore.logs.persist }}
+        {{- if not .Values.deployment.logs.persist }}
         - name: logs
           emptyDir: {}
         {{- end }}
@@ -117,32 +152,32 @@ spec:
         labels:
           {{- include "esdb.labels" . | nindent 10 }}
           app.kubernetes.io/component: cluster
-        {{- with .Values.eventstore.storage.annotations }}
+        {{- with .Values.deployment.storage.annotations }}
         annotations:
           {{ . | toYaml | nindent 10 }}
         {{- end }}
       spec:
-        storageClassName: {{ .Values.eventstore.storage.class }}
+        storageClassName: {{ .Values.deployment.storage.class }}
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ .Values.eventstore.storage.size }}
-  {{- if .Values.eventstore.logs.persist }}
+            storage: {{ .Values.deployment.storage.size }}
+  {{- if .Values.deployment.logs.persist }}
     - metadata:
         name: logs
         labels:
           {{- include "esdb.labels" . | nindent 10 }}
           app.kubernetes.io/component: cluster
-        {{- with .Values.eventstore.logs.storage.annotations }}
+        {{- with .Values.deployment.logs.storage.annotations }}
         annotations:
           {{ . | toYaml | nindent 10 }}
         {{- end }}
       spec:
-        storageClassName: {{ .Values.eventstore.logs.storage.class }}
+        storageClassName: {{ .Values.deployment.logs.storage.class }}
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ .Values.eventstore.logs.storage.size }}
+            storage: {{ .Values.deployment.logs.storage.size }}
   {{- end }}

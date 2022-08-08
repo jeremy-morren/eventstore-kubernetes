@@ -1,7 +1,7 @@
-﻿Installed chart as {{ include "esdb.fullname" . }}
+﻿
+Installed chart as {{ include "esdb.fullname" . }}
 
-{{ if .Release.IsInstall -}}
 The root CA and node certificates have been generated.
-{{- end }}
 
-Access the UI at https://{{ index .Values.proxy.hosts "0" }}/web
+Access the UI at https://{{ index .Values.deployment.hosts "0" }}/web
+

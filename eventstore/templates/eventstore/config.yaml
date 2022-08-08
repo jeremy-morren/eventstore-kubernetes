@@ -6,24 +6,25 @@ metadata:
   labels:
     {{- include "esdb.labels" . | nindent 4 }}
 data:
-{{/*Setup config, generate gossip seeds & add custom config*/}}
-{{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
+# Setup config, generate gossip seeds & add custom config
+# This file will become the YAML configuration file for eventstore
+{{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
   '{{ include "esdb.fullname" $}}-cluster-{{ $i }}': |
     ExtIp: 0.0.0.0
     IntIp: 0.0.0.0
     
-    ClusterSize: {{ $.Values.eventstore.clusterSize }}
+    ClusterSize: {{ $.Values.deployment.clusterSize }}
     TrustedRootCertificatesPath: /certs/ca
     CertificateFile: /certs/node/node-{{$i}}.crt
     CertificatePrivateKeyFile: /certs/node/node-{{$i}}.key
     
-    AdvertiseHostToClientAs: {{ (index $.Values.proxy.hosts ($i | toString)) }}
+    AdvertiseHostToClientAs: {{ (index $.Values.deployment.hosts ($i | toString)) }}
 
     IntHostAdvertiseAs: {{ include "esdb.fullname" $ }}-cluster-{{ $i }}
     ExtHostAdvertiseAs: {{ include "esdb.fullname" $ }}-cluster-{{ $i }}
     
     {{- $gossipSeeds := list}}
-    {{- range $iInner, $eInner := until ($.Values.eventstore.clusterSize | int) }}
+    {{- range $iInner, $eInner := until ($.Values.deployment.clusterSize | int) }}
     {{- if ne $iInner $i }}
       {{- $gossipSeeds = append $gossipSeeds (print (include "esdb.fullname" $) "-cluster-" $iInner ":2113") }}
     {{- end }}
@@ -32,15 +33,13 @@ data:
     DiscoverViaDns: false
     GossipSeed: {{ $gossipSeeds | join "," }}
     
-    {{/*Shared config*/}}
-    {{- toYaml $.Values.eventstore.config.shared | nindent 4}}
-
-    {{/*Allow custom value for HttpPort*/}}
-    {{- if not ((index $.Values.eventstore.config ($i | toString)).AdvertiseHttpPortToClientAs) }}
     AdvertiseHttpPortToClientAs: 443
-    {{- end }}
     
-    {{- with index $.Values.eventstore.config ($i | toString) }}
+    {{/*Shared config*/}}
+    {{- toYaml $.Values.deployment.config.shared | nindent 4}}
+
+    {{/* Node config*/}}
+    {{- with index $.Values.deployment.config ($i | toString) }}
     {{- toYaml . | nindent 4}}
     {{- end }}
 {{- end}}

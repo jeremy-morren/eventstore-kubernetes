@@ -30,7 +30,13 @@ public static class Cors
 
     public static IServiceCollection AddCors(this IServiceCollection services, IEnumerable<EventStoreNode> nodes)
     {
-        var origins = nodes.Select(n => $"https://{n.PublicHost}").ToArray();
+        var origins = nodes.Select(n =>
+        {
+            var host = n.Host;
+            //Remove trailing slash
+            host = host.EndsWith("/") ? host[..^1] : host;
+            return $"https://{host}";
+        }).ToArray();
 
         services.AddCors(o =>
         {

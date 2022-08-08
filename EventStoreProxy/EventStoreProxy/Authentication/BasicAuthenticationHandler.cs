@@ -34,7 +34,7 @@ public class BasicAuthenticationHandler : AuthenticationHandler<BasicAuthenticat
         if (!Parse(auth.ToString(), out var username))
             return AuthenticateResult.NoResult();
         Logger.LogInformation("Authenticating user {Username}", username);
-        if (!await Authenticate(0, AuthenticationHeaderValue.Parse(auth.ToString()), Context.RequestAborted))
+        if (!await Authenticate(AuthenticationHeaderValue.Parse(auth.ToString()), Context.RequestAborted))
             return AuthenticateResult.Fail("Invalid username/password");
         var claims = new Claim[]
         {
@@ -44,32 +44,21 @@ public class BasicAuthenticationHandler : AuthenticationHandler<BasicAuthenticat
         return AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme.Name));
     }
 
-    private async Task<bool> Authenticate(int i, AuthenticationHeaderValue auth, CancellationToken cancellationToken)
+    private async Task<bool> Authenticate(AuthenticationHeaderValue auth, CancellationToken cancellationToken)
     {
-        //TODO: Cache authentication result
-        if (i == _nodes.Length)
-            throw new AllNodesUnreachableException();
-        try
+        //Probe /info
+        //Although it is unsecured, if we send request with an auth header then the challenge is processed
+        var message = new HttpRequestMessage
         {
-            //Probe /info
-            //Although it is unsecured, if we send request with an auth header then the challenge is processed
-            var message = new HttpRequestMessage
+            Method = HttpMethod.Get,
+            RequestUri = new Uri("https://localhost:2113/info"),
+            Headers =
             {
-                Method = HttpMethod.Get,
-                RequestUri = new Uri($"https://{_nodes[i].InternalHost}/info"),
-                Headers =
-                {
-                    Authorization = auth
-                }
-            };
-            using var response = await _httpClient.SendAsync(message, cancellationToken);
-            return response.StatusCode == HttpStatusCode.OK;
-        }
-        catch (HttpRequestException e)
-        {
-            Logger.LogWarning(e, "Node {NodeIndex} unreachable, retrying next node", i);
-            return await Authenticate(i + 1, auth, cancellationToken);
-        }
+                Authorization = auth
+            }
+        };
+        using var response = await _httpClient.SendAsync(message, cancellationToken);
+        return response.IsSuccessStatusCode;
     }
 
     private bool Parse(string input, out string username)

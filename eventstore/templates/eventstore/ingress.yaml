@@ -6,31 +6,30 @@ metadata:
   labels:
     {{- include "esdb.labels" $ | nindent 4 }}
     app.kubernetes.io/component: proxy
-  {{- with .Values.proxy.ingress.annotations }}
+  {{- with .Values.ingress.annotations }}
   annotations:
     ingress.kubernetes.io/force-ssl-redirect: 'true'
-    ingress.kubernetes.io/ssl-passthrough: 'true'
     {{- toYaml . | nindent 4}}
   {{- end }}
 spec:
-  {{- if .Values.proxy.ingress.class }}
-  ingressClassName: {{ .Values.proxy.ingress.class }}
+  {{- if .Values.ingress.class }}
+  ingressClassName: {{ .Values.ingress.class }}
   {{- end }}
   tls:
     - secretName: {{ include "helpers.tlssecret" $ }}
       hosts:
-    {{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
-        - {{ index $.Values.proxy.hosts ($i | toString) | toString }}
+    {{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
+        - {{ index $.Values.deployment.hosts ($i | toString) | toString }}
     {{- end }}
   rules:
-  {{- range $i, $e := until (.Values.eventstore.clusterSize | int) }}
-    - host: {{ index $.Values.proxy.hosts ($i | toString) | toString }}
+  {{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
+    - host: {{ index $.Values.deployment.hosts ($i | toString) | toString }}
       http:
         paths:
           - backend:
               service:
-                name: {{ include "esdb.fullname" $ }}-proxy
-                port: { name: https }
+                name: {{ include "esdb.fullname" $ }}-cluster-{{ $i }}
+                port: { name: http2 }
             path: /
             pathType: Prefix
   {{- end }}
