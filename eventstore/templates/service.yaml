@@ -15,19 +15,10 @@ spec:
       port: 1113
       protocol: TCP
       targetPort: tcp
-    - name: gossip
+    - name: http
       port: 2113
       protocol: TCP
-      targetPort: gossip
-      
-    - name: http1
-      port: 90
-      protocol: TCP
-      targetPort: http1
-    - name: http2
-      port: 80
-      protocol: TCP
-      targetPort: http2
+      targetPort: http
   
   selector:
     {{- include "esdb.labels" $ | nindent 4 }}

@@ -38,9 +38,9 @@ spec:
 
       containers:
         - name: esdb
-          image: '{{ .Values.deployment.esdb.image.repository }}:{{ .Values.deployment.esdb.image.tag | default (print .Chart.AppVersion "-bionic") }}'
-          imagePullPolicy: {{ .Values.deployment.esdb.image.pullPolicy }}
-          {{- with .Values.deployment.esdb.resources }}
+          image: '{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag | default (print .Chart.AppVersion "-bionic") }}'
+          imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
+          {{- with .Values.deployment.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{end}}
@@ -56,7 +56,7 @@ spec:
               name: tcp
               protocol: TCP
             - containerPort: 2113
-              name: gossip
+              name: http
               protocol: TCP
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
@@ -76,40 +76,12 @@ spec:
           livenessProbe:
             exec:
               command: ['curl', 'https://localhost:2113/health/live', '--fail', '--silent', '--cacert', '/certs/ca/ca.crt']
-            failureThreshold: {{ .Values.deployment.esdb.liveness.failureThreshold }}
-            periodSeconds: {{ .Values.deployment.esdb.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.deployment.liveness.failureThreshold }}
+            periodSeconds: {{ .Values.deployment.liveness.periodSeconds }}
               
           # No readiness probe is defined, because the clients will determine the best node
           # Even if the node is not ready, it should still be exposed to the clients
           # This may need revisiting however
-            
-        - name: proxy
-          image: {{ .Values.deployment.proxy.image.repository}}:{{.Values.deployment.proxy.image.tag }}
-          imagePullPolicy: {{ .Values.deployment.proxy.image.imagePullPolicy }}
-          {{- with .Values.deployment.proxy.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end}}
-          env:
-          {{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
-            - name: PROXY_EventStore__{{$i}}__Host
-              value: {{ index $.Values.deployment.hosts ($i | toString) }}
-          {{- end}}
-          ports:
-            - containerPort: 80
-              protocol: TCP
-              name: http2
-            - containerPort: 90
-              protocol: TCP
-              name: http1
-          terminationMessagePolicy: FallbackToLogsOnError
-          volumeMounts:
-            - mountPath: /certs/ca
-              name: ca-certs
-          livenessProbe:
-            httpGet:
-              port: http1
-              path: /healthz/live
 
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

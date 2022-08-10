@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/component: proxy
   {{- with .Values.ingress.annotations }}
   annotations:
-    ingress.kubernetes.io/force-ssl-redirect: 'true'
     {{- toYaml . | nindent 4}}
   {{- end }}
 spec:
@@ -29,7 +28,7 @@ spec:
           - backend:
               service:
                 name: {{ include "esdb.fullname" $ }}-cluster-{{ $i }}
-                port: { name: http2 }
+                port: { name: http }
             path: /
             pathType: Prefix
   {{- end }}

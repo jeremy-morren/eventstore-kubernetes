@@ -7,4 +7,4 @@ param(
 $name = "$Repository/${name}:$Tag"
 
 docker build -t $name $PSScriptRoot
-#docker push $name
+docker push $name

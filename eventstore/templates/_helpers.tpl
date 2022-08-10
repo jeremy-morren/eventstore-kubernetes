@@ -56,3 +56,16 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "helpers.tlssecret" }}
 {{- .Values.ingress.tlsSecretName | default (print (include "esdb.fullname" .) "-ingress-tls") }}
 {{- end}}
+
+{{- define "helpers.certs-secret-yaml" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "esdb.fullname" . }}-certs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster
+type: Opaque
+data: {}
+{{- end }}
