@@ -12,6 +12,9 @@ data:
   '{{ include "esdb.fullname" $}}-cluster-{{ $i }}': |
     ExtIp: 0.0.0.0
     IntIp: 0.0.0.0
+
+    Db: /data/db
+    Log: /data/logs
     
     ClusterSize: {{ $.Values.deployment.clusterSize }}
     TrustedRootCertificatesPath: /certs/ca

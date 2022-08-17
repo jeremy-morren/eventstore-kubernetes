@@ -62,13 +62,16 @@ spec:
           volumeMounts:
             - mountPath: /certs/node
               name: node-certs
+              readOnly: true
             - mountPath: /certs/ca
               name: ca-certs
+              readOnly: true
             - mountPath: /config
               name: config
+              readOnly: true
             - mountPath: /data/db
               name: data
-            - mountPath: /data/log
+            - mountPath: /data/logs
               name: logs
 
           # The /health/live endpoint fails when the cluster is invalid
