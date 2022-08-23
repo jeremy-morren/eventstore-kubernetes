@@ -1,21 +1,19 @@
 ﻿apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "esdb.fullname" . }}-cluster
+  name: {{ include "esdb.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "esdb.labels" . | nindent 4 }}
-    app.kubernetes.io/component: cluster
   {{- with .Values.deployment.annotations }}
   annotations:
     {{- toYaml . | nindent 4}}
   {{- end }}
 spec:
-  serviceName: {{ include "esdb.fullname" .}}-cluster
+  serviceName: {{ include "esdb.fullname" . }}
   selector:
     matchLabels:
       {{- include "esdb.labels" . | nindent 6 }}
-      app.kubernetes.io/component: cluster
   updateStrategy:
     type: RollingUpdate
   podManagementPolicy: Parallel
@@ -24,7 +22,6 @@ spec:
     metadata:
       labels:
         {{- include "esdb.labels" . | nindent 8 }}
-        app.kubernetes.io/component: cluster
       {{- with .Values.deployment.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8}}
@@ -56,7 +53,7 @@ spec:
               name: tcp
               protocol: TCP
             - containerPort: 2113
-              name: http
+              name: grpcs
               protocol: TCP
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
@@ -126,7 +123,6 @@ spec:
         name: data
         labels:
           {{- include "esdb.labels" . | nindent 10 }}
-          app.kubernetes.io/component: cluster
         {{- with .Values.deployment.storage.annotations }}
         annotations:
           {{ . | toYaml | nindent 10 }}
@@ -143,7 +139,6 @@ spec:
         name: logs
         labels:
           {{- include "esdb.labels" . | nindent 10 }}
-          app.kubernetes.io/component: cluster
         {{- with .Values.deployment.logs.storage.annotations }}
         annotations:
           {{ . | toYaml | nindent 10 }}

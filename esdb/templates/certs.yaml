@@ -16,7 +16,7 @@ data:
   
 {{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
   
-  {{- $name := (print (include "esdb.fullname" $ ) "-cluster-" $i) }}
+  {{- $name := (print (include "esdb.fullname" $ ) "-" $i) }}
    
   # Name has to be "eventstoredb-node"
   # localhost DNS is required for the health check to succeed 

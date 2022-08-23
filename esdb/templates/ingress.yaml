@@ -5,7 +5,6 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "esdb.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: proxy
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4}}
@@ -27,8 +26,8 @@ spec:
         paths:
           - backend:
               service:
-                name: {{ include "esdb.fullname" $ }}-cluster-{{ $i }}
-                port: { name: http }
+                name: {{ include "esdb.fullname" $ }}-{{ $i }}
+                port: { name: grpcs }
             path: /
             pathType: Prefix
   {{- end }}

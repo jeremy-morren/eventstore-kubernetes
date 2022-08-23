@@ -9,7 +9,7 @@ data:
 # Setup config, generate gossip seeds & add custom config
 # This file will become the YAML configuration file for eventstore
 {{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
-  '{{ include "esdb.fullname" $}}-cluster-{{ $i }}': |
+  '{{ include "esdb.fullname" $}}-{{ $i }}': |
     ExtIp: 0.0.0.0
     IntIp: 0.0.0.0
 
@@ -23,13 +23,13 @@ data:
     
     AdvertiseHostToClientAs: {{ (index $.Values.deployment.hosts ($i | toString)) }}
 
-    IntHostAdvertiseAs: {{ include "esdb.fullname" $ }}-cluster-{{ $i }}
-    ExtHostAdvertiseAs: {{ include "esdb.fullname" $ }}-cluster-{{ $i }}
+    IntHostAdvertiseAs: {{ include "esdb.fullname" $ }}-{{ $i }}
+    ExtHostAdvertiseAs: {{ include "esdb.fullname" $ }}-{{ $i }}
     
     {{- $gossipSeeds := list}}
     {{- range $iInner, $eInner := until ($.Values.deployment.clusterSize | int) }}
     {{- if ne $iInner $i }}
-      {{- $gossipSeeds = append $gossipSeeds (print (include "esdb.fullname" $) "-cluster-" $iInner ":2113") }}
+      {{- $gossipSeeds = append $gossipSeeds (print (include "esdb.fullname" $) "-" $iInner ":2113") }}
     {{- end }}
     {{- end }}
     

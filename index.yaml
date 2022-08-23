@@ -1,14 +1,14 @@
 apiVersion: v1
 entries:
-  eventstore:
+  esdb:
   - apiVersion: v2
-    appVersion: 21.10.2
-    created: "2022-08-17T15:25:30.3486787+08:00"
+    appVersion: 21.10.7
+    created: "2022-08-23T14:26:54.5539214+08:00"
     description: A Helm chart to install a secure EventStore cluster in Kubernetes
-    digest: dc19f40d51e1011bec0e906ccb11fb83b463a7e4a165a001bd503492086666e5
-    name: eventstore
+    digest: f8a492ef3823cb02195fdfbc8a2fd494a19223b3c8d88123367fef15fbccf106
+    name: esdb
     type: application
     urls:
-    - https://jeremy-morren.github.io/eventstore-kubernetes/charts/eventstore-0.3.0.tgz
-    version: 0.3.0
-generated: "2022-08-17T15:25:30.3476561+08:00"
+    - https://jeremy-morren.github.io/eventstore-kubernetes/charts/esdb-0.4.0.tgz
+    version: 0.4.0
+generated: "2022-08-23T14:26:54.5472717+08:00"
