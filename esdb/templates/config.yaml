@@ -18,8 +18,8 @@ data:
     
     ClusterSize: {{ $.Values.deployment.clusterSize }}
     TrustedRootCertificatesPath: /certs/ca
-    CertificateFile: /certs/node/node-{{$i}}.crt
-    CertificatePrivateKeyFile: /certs/node/node-{{$i}}.key
+    CertificateFile: /certs/node/{{ include "esdb.fullname" $}}-{{ $i }}.crt
+    CertificatePrivateKeyFile: /certs/node/{{ include "esdb.fullname" $}}-{{ $i }}.key
     
     AdvertiseHostToClientAs: {{ (index $.Values.deployment.hosts ($i | toString)) }}
 
@@ -45,4 +45,32 @@ data:
     {{- with index $.Values.deployment.config ($i | toString) }}
     {{- toYaml . | nindent 4}}
     {{- end }}
+
+
+  {{- if $.Values.backup.enable }}
+  '{{ include "esdb.fullname" $}}-{{ $i }}-backup': |
+    {
+      "Authentication": {
+        "EventStoreServer": "https://localhost:2113/"
+      },
+      "Backup": {
+        "ServerName": "{{ (index $.Values.deployment.hosts ($i | toString)) }}",
+        "DataDirectory": "/data/db",
+        "TempDirectory": "/tmp"
+      },
+      "Kestrel": {
+        "Endpoints": {
+          "Https": {
+            "Url": "https://+:443/",
+            "Certificate": {
+              "Path": "/certs/node/{{ include "esdb.fullname" $}}-{{ $i }}.crt",
+              "KeyPath": "/certs/node/{{ include "esdb.fullname" $}}-{{ $i }}.key"
+            }
+          }
+        }
+      }
+    } 
+  {{- end }}
+
 {{- end}}
+

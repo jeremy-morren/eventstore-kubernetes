@@ -22,7 +22,7 @@ data:
   # localhost DNS is required for the health check to succeed 
   {{- $crt := genSignedCert "eventstoredb-node"  nil (list "localhost" $name) 3650 $ca }}
   
-  "node-{{$i}}.crt": '{{ $crt.Cert | b64enc}}'
-  "node-{{$i}}.key": '{{ $crt.Key  | b64enc}}'
+  "{{ include "esdb.fullname" $}}-{{ $i }}.crt": '{{ $crt.Cert | b64enc}}'
+  "{{ include "esdb.fullname" $}}-{{ $i }}.key": '{{ $crt.Key  | b64enc}}'
 
 {{- end}}

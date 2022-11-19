@@ -30,4 +30,12 @@ spec:
                 port: { name: grpcs }
             path: /
             pathType: Prefix
+        {{- if $.Values.backup.enable }}
+          - backend:
+              service:
+                name: {{ include "esdb.fullname" $ }}-{{ $i }}
+                port: { name: backup }
+            path: /admin/backup
+            pathType: Prefix
+        {{- end }}
   {{- end }}

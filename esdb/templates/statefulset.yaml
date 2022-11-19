@@ -83,6 +83,52 @@ spec:
           # Even if the node is not ready, it should still be exposed to the clients
           # This may need revisiting however
 
+        {{- if .Values.backup.enable }}
+        - name: backup
+          image: '{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}'
+          imagePullPolicy: '{{ .Values.backup.image.pullPolicy }}'
+          env:
+            - name: NODE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: ASPNETCORE_URLS
+              value: ""
+          command: 
+            - '/bin/sh'
+            - '-c'
+            - |
+              cp /certs/ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates 
+              exec dotnet EventStoreBackup.dll --config /config/$(NODE)-backup
+          ports:
+            - containerPort: 443
+              name: backup
+              protocol: TCP
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - mountPath: /certs/node
+              name: node-certs
+              readOnly: true
+            - mountPath: /certs/ca
+              name: ca-certs
+              readOnly: true
+            - mountPath: /config
+              name: config
+              readOnly: true
+            - mountPath: /data/db
+              name: data
+              readOnly: true
+            - mountPath: /tmp
+              name: backup-tmp
+          livenessProbe:
+            httpGet:
+              path: /healthz-live
+              port: backup
+              scheme: HTTPS
+            failureThreshold: {{ .Values.deployment.liveness.failureThreshold }}
+            periodSeconds: {{ .Values.deployment.liveness.periodSeconds }}
+        {{- end }}
+
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -115,6 +161,10 @@ spec:
                 path: ca.key
         {{- if not .Values.deployment.logs.persist }}
         - name: logs
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.backup.enable }}
+        - name: backup-tmp
           emptyDir: {}
         {{- end }}
 

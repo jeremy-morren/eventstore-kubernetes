@@ -18,6 +18,13 @@ spec:
       port: 2113
       protocol: TCP
       targetPort: grpcs
+
+  {{- if $.Values.backup.enable }}
+    - name: backup
+      port: 2114
+      protocol: TCP
+      targetPort: backup
+  {{- end }}
   
   selector:
     {{- include "esdb.labels" $ | nindent 4 }}
