@@ -30,15 +30,14 @@ deployment:
     '2': { }
     
   logs:
-    #If this is disabled, then an emptydir will be mounted for /logs
-    #Set to true if you wish to persist logs with a PVC
+    #Set to true if you wish to persist logs to a persistent volume
     persist: false
+
+    #Configure the PersistentVolumeClaim for log files
     storage:
-      #By default, the maximum log file size for
-      #EventstoreDB is 1 GB
-      class: standard
-      annotations: {}
-      size: 1Gi
+      # class: standard
+      # annotations: {}
+      # size: 1Gi #By default, the maximum log file size for EventstoreDB is 1 GB
   
   image:
     repository: eventstore/eventstore
@@ -59,13 +58,15 @@ deployment:
     timeoutSeconds: 1
     
   #Configure the node resource limits
-  resources:
-    requests:
-      memory: 128Mi
-      cpu: 250m
-    limits:
-      memory: 2Gi
-      cpu: '2'
+  #It is strongly recommend specifying limits to assist with pod scheduling
+
+  resources: {}
+  #   requests:
+  #     memory: 512Mi
+  #     cpu: 128m
+  #   limits:
+  #     memory: 2Gi
+  #     cpu: '1'
     
   
   #StatefulSet annotations
@@ -119,7 +120,8 @@ backup:
     #   tag: ""
     #   pullPolicy: IfNotPresent
 
-    nodeSelector: {}
+    nodeSelector:
+      kubernetes.io/os: linux
     
     imagePullSecrets: []
 
@@ -129,8 +131,21 @@ backup:
 
     podSecurityContext: {}
 
+    #Configure the node resource limits
+    #It is strongly recommend specifying limits to assist with pod scheduling
+
+    #Note that this pod will be mostly idle, since it functions mostly as a reverse proxy
+
     resources: {}
+    #   requests:
+    #     memory: 50Mi
+    #     cpu: 10m
+    #   limits:
+    #     memory: 256Mi
+    #     cpu: 128m
 
     liveness:
       failureThreshold: 6
       periodSeconds: 10
+
+      
