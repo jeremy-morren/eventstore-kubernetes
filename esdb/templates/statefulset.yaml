@@ -79,17 +79,23 @@ spec:
               name: backup-temp
             {{- end }}
 
-          # The /health/live endpoint fails when the cluster is invalid
-          # So we need to give the node time to join the cluster
+
+          {{- if .Values.deployment.livenessProbe.enabled }}
           livenessProbe:
-            exec:
-              command: ['curl', 'https://localhost:2113/health/live', '--fail', '--silent', '--cacert', '/certs/ca/ca.crt']
-            failureThreshold: {{ .Values.deployment.liveness.failureThreshold }}
-            periodSeconds: {{ .Values.deployment.liveness.periodSeconds }}
-              
+            httpGet:
+              path: {{ .Values.deployment.livenessProbe.path }}
+              port: grpcs
+              scheme: HTTPS
+            failureThreshold: {{ .Values.deployment.livenessProbe.failureThreshold }}
+            initialDelaySeconds: {{ .Values.deployment.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.deployment.livenessProbe.periodSeconds }}
+            successThreshold: {{ .Values.deployment.livenessProbe.successThreshold }}
+            timeoutSeconds: {{ .Values.deployment.livenessProbe.timeoutSeconds }}
+          {{- end }}
+
           # No readiness probe is defined, because the clients will determine the best node
           # Even if the node is not ready, it should still be exposed to the clients
-          # This may need revisiting however
+              
 
       {{- with .Values.deployment.imagePullSecrets }}
       imagePullSecrets:

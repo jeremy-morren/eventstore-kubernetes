@@ -22,8 +22,8 @@ ingress:
 deployment:
   hosts:
     '0': a.esdb.example.com
-    '1': a.esdb.example.com
-    '2': a.esdb.example.com
+    '1': b.esdb.example.com
+    '2': c.esdb.example.com
 
   eventstore:
     storage:

@@ -45,13 +45,18 @@ deployment:
     #If tag is not provided, then chart [appversion]-bionic will be used
     tag: ""
     pullPolicy: IfNotPresent
-    
-  # The liveness probe on a cluster node fails when the cluster is invalid
-  # For liveness, if the cluster is briefly invalid, do not kill the node
-  # Default 1 Minute
-  liveness:
-    failureThreshold: 6
+  
+  #No readiness probe is defined, since EventStore is a stateful clustered service
+  #Even nodes which are not ready should be exposed to clients, who will act accordingly
+
+  livenessProbe:
+    enabled: true
+    path: /gossip
+    failureThreshold: 18
+    initialDelaySeconds: 0
     periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
     
   #Configure the node resource limits
   resources:
@@ -78,7 +83,7 @@ deployment:
     
   affinity: {}
   
-  imagePullSecrets: { }
+  imagePullSecrets: []
 
 #Configure the ingress resource
 #Backend protocol must be GRPCS
@@ -116,7 +121,7 @@ backup:
 
     nodeSelector: {}
     
-    imagePullSecrets: {}
+    imagePullSecrets: []
 
     annotations: {}
 
