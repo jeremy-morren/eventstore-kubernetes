@@ -33,8 +33,8 @@ spec:
         {{- if $.Values.backup.enable }}
           - backend:
               service:
-                name: {{ include "esdb.fullname" $ }}-{{ $i }}
-                port: { name: backup }
+                name: {{ include "esdb.fullname" $ }}-backup
+                port: { name: https }
             path: /admin/backup
             pathType: Prefix
         {{- end }}

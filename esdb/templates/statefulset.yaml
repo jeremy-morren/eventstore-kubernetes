@@ -14,6 +14,7 @@ spec:
   selector:
     matchLabels:
       {{- include "esdb.labels" . | nindent 6 }}
+      app.kubernetes.io/component: cluster
   updateStrategy:
     type: RollingUpdate
   podManagementPolicy: Parallel
@@ -22,6 +23,7 @@ spec:
     metadata:
       labels:
         {{- include "esdb.labels" . | nindent 8 }}
+        app.kubernetes.io/component: cluster
       {{- with .Values.deployment.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8}}
@@ -68,8 +70,14 @@ spec:
               readOnly: true
             - mountPath: /data/db
               name: data
+            {{- if .Values.deployment.logs.persist }}
             - mountPath: /data/logs
               name: logs
+            {{- end }}
+            {{- if .Values.backup.enable }}
+            - mountPath: /tmp
+              name: backup-temp
+            {{- end }}
 
           # The /health/live endpoint fails when the cluster is invalid
           # So we need to give the node time to join the cluster
@@ -83,53 +91,7 @@ spec:
           # Even if the node is not ready, it should still be exposed to the clients
           # This may need revisiting however
 
-        {{- if .Values.backup.enable }}
-        - name: backup
-          image: '{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}'
-          imagePullPolicy: '{{ .Values.backup.image.pullPolicy }}'
-          env:
-            - name: NODE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: ASPNETCORE_URLS
-              value: ""
-          command: 
-            - '/bin/sh'
-            - '-c'
-            - |
-              cp /certs/ca/*.crt /usr/local/share/ca-certificates/ && update-ca-certificates 
-              exec dotnet EventStoreBackup.dll --config /config/$(NODE)-backup
-          ports:
-            - containerPort: 443
-              name: backup
-              protocol: TCP
-          terminationMessagePolicy: FallbackToLogsOnError
-          volumeMounts:
-            - mountPath: /certs/node
-              name: node-certs
-              readOnly: true
-            - mountPath: /certs/ca
-              name: ca-certs
-              readOnly: true
-            - mountPath: /config
-              name: config
-              readOnly: true
-            - mountPath: /data/db
-              name: data
-              readOnly: true
-            - mountPath: /tmp
-              name: backup-tmp
-          livenessProbe:
-            httpGet:
-              path: /healthz-live
-              port: backup
-              scheme: HTTPS
-            failureThreshold: {{ .Values.deployment.liveness.failureThreshold }}
-            periodSeconds: {{ .Values.deployment.liveness.periodSeconds }}
-        {{- end }}
-
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.deployment.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}  
@@ -159,12 +121,8 @@ spec:
                 path: ca.crt
               - key: ca.key
                 path: ca.key
-        {{- if not .Values.deployment.logs.persist }}
-        - name: logs
-          emptyDir: {}
-        {{- end }}
         {{- if .Values.backup.enable }}
-        - name: backup-tmp
+        - name: backup-temp
           emptyDir: {}
         {{- end }}
 

@@ -77,6 +77,8 @@ deployment:
     fsGroup: 1000
     
   affinity: {}
+  
+  imagePullSecrets: { }
 
 #Configure the ingress resource
 #Backend protocol must be GRPCS
@@ -99,12 +101,31 @@ certificatesLength:
   ca: 3650
   node: 3650
 
-imagePullSecrets: { }
-
 backup:
   enable: false
-  image: {}
-  # image:
-  #   repository: ""
-  #   tag: ""
-  #   pullPolicy: IfNotPresent
+
+  #Configure backup deployment
+  deployment:
+    replicas: 1
+
+    image: {}
+    # image:
+    #   repository: ""
+    #   tag: ""
+    #   pullPolicy: IfNotPresent
+
+    nodeSelector: {}
+    
+    imagePullSecrets: {}
+
+    annotations: {}
+
+    podAnnotations: {}
+
+    podSecurityContext: {}
+
+    resources: {}
+
+    liveness:
+      failureThreshold: 6
+      periodSeconds: 10

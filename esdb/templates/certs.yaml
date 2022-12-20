@@ -25,4 +25,15 @@ data:
   "{{ include "esdb.fullname" $}}-{{ $i }}.crt": '{{ $crt.Cert | b64enc}}'
   "{{ include "esdb.fullname" $}}-{{ $i }}.key": '{{ $crt.Key  | b64enc}}'
 
+{{- end }}
+
+{{- if .Values.backup.enable }}
+
+  {{- $name := (print (include "esdb.fullname" $ ) "-backup") }}
+
+  {{- $crt := genSignedCert (include "esdb.fullname" $) nil (list "localhost" $name) 3650 $ca }}
+
+  "backup.crt": '{{ $crt.Cert | b64enc }}'
+  "backup.key": '{{ $crt.Key | b64enc }}'
+  
 {{- end}}

@@ -1,0 +1,90 @@
+{{- if $.Values.backup.enable }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "esdb.fullname" . }}-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+  {{- with .Values.backup.deployment.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "esdb.labels" . | nindent 6 }}
+      app.kubernetes.io/component: backup
+  replicas: {{ .Values.backup.replicas }}
+  template:
+    metadata:
+      labels:
+        {{- include "esdb.labels" . | nindent 8 }}
+        app.kubernetes.io/component: backup
+      {{- with .Values.backup.deployment.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8}}
+      {{- end}}
+    spec:
+      serviceAccountName: {{ include "esdb.serviceAccountName" . }}
+      {{- with .Values.backup.deployment.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+        - name: backup
+          image: '{{ .Values.backup.deployment.image.repository }}:{{ .Values.backup.deployment.image.tag}}'
+          imagePullPolicy: {{ .Values.backup.deployment.image.pullPolicy }}
+          {{- with .Values.backup.deployment.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{end}}
+          env:
+            - name: ASPNETCORE_URLS
+              value: ""
+          args: [ '--config', '/config/config.json' ]
+          ports:
+            - containerPort: 443
+              name: https
+              protocol: TCP
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+              readOnly: true
+            - mountPath: /config
+              name: config
+              readOnly: true
+
+          livenessProbe:
+            httpGet:
+              path: /healthz-live
+              port: https
+              scheme: HTTPS
+            failureThreshold: {{ .Values.backup.deployment.liveness.failureThreshold }}
+            periodSeconds: {{ .Values.backup.deployment.liveness.periodSeconds }}
+
+      {{- with .Values.backup.deployment.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}  
+      {{- with .Values.backup.deployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      restartPolicy: Always
+      
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "esdb.fullname" $}}-backup-config
+            defaultMode: 0440
+        - name: certs
+          secret:
+            secretName: {{ include "esdb.fullname" $}}-certs
+            defaultMode: 0440
+            
+{{- end }}
