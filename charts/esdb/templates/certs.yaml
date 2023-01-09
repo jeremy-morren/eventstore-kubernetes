@@ -1,0 +1,39 @@
+﻿apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "esdb.fullname" . }}-certs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "esdb.labels" . | nindent 4 }}
+data:
+  # Generates cluster certificates
+  # See https://developers.eventstore.com/server/v21.10/security.html#certificates-configuration
+  
+  {{ $ca := genCA (print (include "esdb.fullname" $ ) " CA") 3650 }}
+  
+  "ca.crt": '{{ $ca.Cert | b64enc }}'
+  "ca.key": '{{ $ca.Key | b64enc }}'
+  
+{{- range $i, $e := until (.Values.deployment.clusterSize | int) }}
+  
+  {{- $name := (print (include "esdb.fullname" $ ) "-" $i) }}
+   
+  # Name has to be "eventstoredb-node"
+  # localhost DNS is required for the health check to succeed 
+  {{- $crt := genSignedCert "eventstoredb-node"  nil (list "localhost" $name) 3650 $ca }}
+  
+  "{{ include "esdb.fullname" $}}-{{ $i }}.crt": '{{ $crt.Cert | b64enc}}'
+  "{{ include "esdb.fullname" $}}-{{ $i }}.key": '{{ $crt.Key  | b64enc}}'
+
+{{- end }}
+
+{{- if .Values.backup.enable }}
+
+  {{- $name := (print (include "esdb.fullname" $ ) "-backup") }}
+
+  {{- $crt := genSignedCert (include "esdb.fullname" $) nil (list "localhost" $name) 3650 $ca }}
+
+  "backup.crt": '{{ $crt.Cert | b64enc }}'
+  "backup.key": '{{ $crt.Key | b64enc }}'
+  
+{{- end}}

@@ -1,0 +1,7 @@
+﻿
+Installed chart as {{ include "esdb.fullname" . }}
+
+The root CA and node certificates have been generated.
+
+Access the UI at https://{{ index .Values.deployment.hosts "0" }}/web
+

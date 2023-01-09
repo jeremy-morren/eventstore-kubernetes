@@ -1,6 +1,0 @@
-﻿apiVersion: v2
-name: esdb
-description:  A Helm chart to install a secure EventStore cluster in Kubernetes
-type: application
-version: 0.5.0
-appVersion: "21.10.8"
