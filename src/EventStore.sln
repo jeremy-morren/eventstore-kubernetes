@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventStoreBackup", "EventSt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HealthChecks.EventStoreDB.Grpc", "HealthChecks\HealthChecks.EventStoreDB.Grpc.csproj", "{D979E624-ACFB-4DAF-BCBB-E1219CD0E00E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HealthChecks.EventStoreDB.Grpc.Tests", "HealthChecks.EventStoreDB.Grpc.Tests\HealthChecks.EventStoreDB.Grpc.Tests.csproj", "{A0FCC04B-563E-42AD-8941-292EC42E9836}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HealthChecks.EventStoreDB.Grpc.Tests", "HealthChecks.Tests\HealthChecks.EventStoreDB.Grpc.Tests.csproj", "{A0FCC04B-563E-42AD-8941-292EC42E9836}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventStoreBackup.Tests", "EventStoreBackup.Tests\EventStoreBackup.Tests.csproj", "{71B7DC26-A84F-4A52-A347-C3718E125E76}"
 EndProject
