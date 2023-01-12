@@ -1,6 +1,6 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Authentication;
-using Serilog;
+
 // ReSharper disable StringLiteralTypo
 
 namespace EventStoreBackup.Auth;

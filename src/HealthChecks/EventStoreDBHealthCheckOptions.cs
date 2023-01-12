@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using EventStore.Client;
-using Microsoft.Extensions.DependencyInjection;
+﻿using EventStore.Client;
 using Microsoft.Extensions.Logging;
 
 // ReSharper disable InconsistentNaming

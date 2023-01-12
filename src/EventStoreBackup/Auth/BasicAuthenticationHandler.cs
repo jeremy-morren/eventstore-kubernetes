@@ -1,13 +1,10 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using k8s.Models;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 

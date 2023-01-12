@@ -1,13 +1,10 @@
-using System.Security.Cryptography.X509Certificates;
 using CommandLine;
 using EventStoreBackup;
 using EventStoreBackup.Auth;
 using EventStoreBackup.K8s;
 using EventStoreBackup.Services;
 using k8s;
-using k8s.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 using Serilog.Events;
