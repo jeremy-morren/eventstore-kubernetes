@@ -10,11 +10,14 @@ using EventStore.Client;
 namespace HealthChecks.EventStoreDB.Grpc.Tests;
 
 [SuppressMessage("ReSharper", "ClassNeverInstantiated.Global")]
-public sealed class EventStoreTestHarness : IDisposable
+public sealed class EventStoreTestHarness : IDisposable, IAsyncDisposable
 {
+    private static readonly Random Random = new();
+    
     public readonly EventStoreClient Client;
     public readonly string ContainerId;
-    public readonly int Port = Random.Shared.Next(2048, 60000);
+
+    public readonly int Port = Random.Next(2048, 60000);
 
     public readonly EventStoreClientSettings Settings;
 
@@ -25,10 +28,29 @@ public sealed class EventStoreTestHarness : IDisposable
         Client = new EventStoreClient(Settings);
     }
 
-    public void Dispose()
+    public void Dispose() => DisposeAsync().GetAwaiter().GetResult();
+
+    private bool _disposed;
+
+    public async ValueTask DisposeAsync()
     {
-        Client.Dispose();
-        DisposeContainer().GetAwaiter().GetResult();
+        if (_disposed)
+            return;
+        try
+        {
+            try
+            {
+                await Client.DisposeAsync();
+            }
+            finally
+            {
+                await DisposeContainer();
+            }
+        }
+        finally
+        {
+            _disposed = true;
+        }
     }
 
     #region Docker

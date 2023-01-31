@@ -40,4 +40,38 @@ public static class EventStoreDBHealthCheckServiceCollectionExtensions
             tags,
             timeout));
     }
+    
+    public static IHealthChecksBuilder AddEventStore(this IHealthChecksBuilder builder,
+        Action<IServiceProvider, EventStoreDBHealthCheckOptions> configureOptions,
+        string name = "EventStore",
+        HealthStatus failureStatus = HealthStatus.Unhealthy,
+        IEnumerable<string>? tags = null,
+        TimeSpan? timeout = null)
+    {
+        builder.Services.AddSingleton<IConfigureOptions<EventStoreDBHealthCheckOptions>>(sp => 
+            new ConfigureNamedOptions<EventStoreDBHealthCheckOptions>(name, options => configureOptions(sp, options)));
+        
+        builder.Services.AddOptions<EventStoreDBHealthCheckOptions>()
+            .Validate(o =>
+            {
+                o.Validate();
+                o.CreateSettings(NullLoggerFactory.Instance);
+                return true;
+            });
+        
+        builder.Services.AddSingleton<EventStoreDBHealthCheck>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<EventStoreDBHealthCheckOptions>>();
+            var loggerFactory = sp.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
+            var settings = options.Value.CreateSettings(loggerFactory);
+            return new EventStoreDBHealthCheck(new EventStoreClient(settings));
+        });
+        
+        return builder.Add(new HealthCheckRegistration(
+            name,
+            sp => sp.GetRequiredService<EventStoreDBHealthCheck>(),
+            failureStatus,
+            tags,
+            timeout));
+    }
 }

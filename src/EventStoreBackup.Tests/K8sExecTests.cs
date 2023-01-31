@@ -2,6 +2,7 @@ using System.IO.Pipelines;
 using EventStoreBackup.K8s;
 using k8s;
 using Microsoft.Extensions.Logging.Abstractions;
+
 // ReSharper disable InconsistentNaming
 
 namespace EventStoreBackup.Tests;
