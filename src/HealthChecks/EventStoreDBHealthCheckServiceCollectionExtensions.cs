@@ -70,7 +70,9 @@ public static class EventStoreDBHealthCheckServiceCollectionExtensions
             var options = sp.GetRequiredService<IOptions<EventStoreDBHealthCheckOptions>>();
             var loggerFactory = sp.GetService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
             var settings = options.Value.CreateSettings(loggerFactory);
-            return new EventStoreDBHealthCheck(new EventStoreClient(settings));
+            return new EventStoreDBHealthCheck(new EventStoreClient(settings),
+                new EventStoreDBHealthCheckOptions(),
+                NullLogger<EventStoreDBHealthCheck>.Instance);
         });
         
         return builder.Add(new HealthCheckRegistration(

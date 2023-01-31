@@ -64,7 +64,11 @@ internal class EventStoreClientCollection : IReadOnlyDictionary<string, EventSto
             _clients.Clear();
         }
         foreach (var client in clients)
+#if NET5_0_OR_GREATER
             client.Dispose();
+#else
+            client.DisposeAsync().AsTask().Wait();
+#endif
     }
 
     #region Implementation of IReadOnlyDictionary
