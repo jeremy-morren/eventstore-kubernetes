@@ -1,6 +1,9 @@
 ﻿using EventStore.Client;
 using Microsoft.Extensions.Logging;
 
+// ReSharper disable StringLiteralTypo
+// ReSharper disable PropertyCanBeMadeInitOnly.Global
+// ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 // ReSharper disable InconsistentNaming
 // ReSharper disable IdentifierTypo
 // ReSharper disable MemberCanBePrivate.Global
@@ -13,10 +16,10 @@ public class EventStoreDBHealthCheckOptions
     /// <summary>
     /// Gets or sets the URLs use
     /// </summary>
-    public ISet<string> URLs { get; set; } = new HashSet<string>();
+    public IList<string> Nodes { get; set; } = new List<string>();
 
     /// <summary>
-    /// Gets or sets the credentials used to authenticate to EventStoreDB in format format <c>username:password</c>
+    /// Gets or sets the credentials used to authenticate to EventStoreDB in format <c>username:password</c>
     /// </summary>
     public string? Credentials { get; set; }
 
@@ -38,18 +41,32 @@ public class EventStoreDBHealthCheckOptions
     /// </summary>
     public bool EnableLogging { get; set; } = false;
 
+    /// <summary>
+    /// The stream to read.
+    /// </summary>
+    /// <remarks>
+    /// It is not necessary for the stream to exist.
+    /// </remarks>
+    public string HealthCheckStream { get; set; } = "$health";
+
     public void Validate()
     {
-        if (URLs == null! || URLs.Count == 0)
-            throw new Exception("EventStore URL(s) are required");
+        if (Nodes == null! || Nodes.Count == 0)
+            throw new Exception("EventStore Nodes(s) are required");
     }
 
+    /// <summary>
+    /// Creates a new instance of <see cref="EventStoreClientSettings"/>, with logging
+    /// from the provided <see cref="ILoggerFactory"/>
+    /// </summary>
+    /// <param name="loggerFactory">The logger factory to use for logging</param>
+    /// <returns></returns>
     public EventStoreClientSettings CreateSettings(ILoggerFactory loggerFactory)
     {
         Validate();
         var credentials = Credentials != null ? $"{Credentials}@" : null;
-        var url = string.Join(",", URLs);
-        var settings = EventStoreClientSettings.Create($"esdb://{credentials}{url}?tls={UseTLS}&tlsVerifyCert={VerifyTLSCert}");
+        var host = string.Join(",", Nodes);
+        var settings = EventStoreClientSettings.Create($"esdb://{credentials}{host}?tls={UseTLS}&tlsVerifyCert={VerifyTLSCert}");
         if (EnableLogging)
             settings.LoggerFactory = loggerFactory;
         return settings;
